@@ -8,6 +8,9 @@ import (
 )
 
 func CheckMetric(mType string, mValue string) int {
+	if len(mValue) == 0 {
+		return 0
+	}
 	if mType == models.Gauge {
 		val, err := strconv.ParseFloat(mValue, 64)
 		if err != nil {

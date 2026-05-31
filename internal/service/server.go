@@ -13,7 +13,6 @@ func RunServer() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handler.SetMetricHandler)
 	mux.HandleFunc("/get/{metric_type}/{metric_name}", handler.GetMetricHandler)
-	mux.HandleFunc("/", handler.MainHandler)
 
 	return http.ListenAndServe(`:8080`, mux)
 }
