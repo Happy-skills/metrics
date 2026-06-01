@@ -19,6 +19,9 @@ func CheckMetric(mType string, mValue string) int {
 		if reflect.TypeOf(val).Kind() != reflect.Float64 {
 			return 0
 		}
+		if val < 0 {
+			return 0
+		}
 		return 1
 	}
 	if mType == models.Counter {
@@ -27,6 +30,9 @@ func CheckMetric(mType string, mValue string) int {
 			return 0
 		}
 		if reflect.TypeOf(val).Kind() != reflect.Int64 {
+			return 0
+		}
+		if val < 0 {
 			return 0
 		}
 		return 1

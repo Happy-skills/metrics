@@ -9,10 +9,12 @@ import (
 )
 
 var ServerStorage MemStorage
+var AgentStorage MemStorage
 
 type MemStorage interface {
 	SetValue(mType string, mName string, mValue string) error
 	GetValue(mType string, mName string) (*models.Metrics, *error)
+	GetValues() map[string]models.Metrics
 }
 
 type memStorage struct {
@@ -69,4 +71,13 @@ func (m *memStorage) GetValue(mType string, mName string) (*models.Metrics, *err
 		return nil, &err
 	}
 	return metric, nil
+}
+
+func (m *memStorage) GetValues() map[string]models.Metrics {
+	ret := make(map[string]models.Metrics)
+	for k, v := range m.metrics {
+		ret[k] = *new(models.Metrics)
+		ret[k] = *v
+	}
+	return ret
 }
