@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -9,6 +10,8 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"gopkg.in/h2non/gentleman.v2"
 
 	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
@@ -110,7 +113,7 @@ func getMetrics() error {
 func sendMetrics(serverUrl string) error {
 	var sVal string
 	mStorage := repository.AgentStorage.GetValues()
-	client := &http.Client{}
+	client := gentleman.New()
 	for _, v := range mStorage {
 		vType := v.MType
 		switch vType {
@@ -121,28 +124,23 @@ func sendMetrics(serverUrl string) error {
 		}
 		//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 		url := fmt.Sprintf("%s/update/%s/%s/%s", serverUrl, v.MType, v.ID, sVal)
-		fmt.Println(url)
-		req, err := http.NewRequest(http.MethodPost, url, nil)
+		req := client.Request()
+		req.Method(http.MethodPost)
+		req.URL(url)
+		req.SetHeader("Content-Type", "text/plain")
+		response, err := req.Send()
 		if err != nil {
 			return err
 		}
-		req.Header.Set("Content-Type", "text/plain")
-		response, err := client.Do(req)
-		if err != nil {
-			return err
+		if !response.Ok {
+			return errors.New(response.String())
 		}
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			if err != nil {
 				panic(err)
 			}
-		}(response.Body)
-
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(body))
+		}(response.RawResponse.Body)
 	}
 	return nil
 }

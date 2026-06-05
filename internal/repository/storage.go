@@ -81,3 +81,16 @@ func (m *memStorage) GetValues() map[string]models.Metrics {
 	}
 	return ret
 }
+
+func TestServerStorageInit(m MemStorage) error {
+	err := m.SetValue(models.Counter, "PollCount", "10")
+	if err != nil {
+		return err
+	}
+	err = m.SetValue(models.Gauge, "RandomValue", "0.2569")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
