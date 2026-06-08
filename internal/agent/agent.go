@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Happy-skills/metrics/internal/config"
 	"gopkg.in/h2non/gentleman.v2"
 
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -48,8 +49,8 @@ var mapRuntimeMetrics = []string{"Alloc",
 func Run() {
 	repository.AgentStorage = repository.NewMemStorage()
 
-	go poolGetting(2)
-	poolSending(10)
+	go poolGetting(config.AgentOptions.PollInterval)
+	poolSending(config.AgentOptions.ReportInterval, config.AgentOptions.ServerAddr)
 }
 
 func poolGetting(pollInterval int) {
@@ -61,10 +62,10 @@ func poolGetting(pollInterval int) {
 	}
 }
 
-func poolSending(pollInterval int) {
+func poolSending(pollInterval int, flagServerAddr string) {
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if err := sendMetrics("http://localhost:8080"); err != nil {
+		if err := sendMetrics("http://" + flagServerAddr); err != nil {
 			fmt.Printf("sendMetrics error: %s", err.Error())
 		}
 	}
