@@ -16,7 +16,7 @@ var AgentOptions agentOptions
 var ServerOptions serverOptions
 
 func ParseAgentFlags() {
-	flag.StringVar(&AgentOptions.ServerAddr, "a", "localhost:8081", "address and port server")
+	flag.StringVar(&AgentOptions.ServerAddr, "a", "localhost:8080", "address and port server")
 	flag.IntVar(&AgentOptions.ReportInterval, "r", 10, "interval in seconds for sending metrics")
 	flag.IntVar(&AgentOptions.PollInterval, "p", 2, "interval in seconds fof getting metrics")
 	flag.Parse()
