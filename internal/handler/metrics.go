@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"html/template"
 	"net/http"
 	"sort"
 	"strconv"
@@ -10,44 +11,34 @@ import (
 	"github.com/Happy-skills/metrics/internal/repository"
 )
 
-func SetMetricHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+func SetMetricHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+	mName := r.PathValue("metric_name")
+	if mName == "" {
+		w.WriteHeader(http.StatusNotFound)
 		return
-	} else {
-		mName := r.PathValue("metric_name")
-		if mName == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		mType := r.PathValue("metric_type")
-		if mType == "" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		mValue := r.PathValue("metric_value")
-
-		isCorrect := repository.CheckMetric(mType, mValue)
-		if isCorrect == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		err := repository.ServerStorage.SetValue(mType, mName, mValue)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
 	}
+	mType := r.PathValue("metric_type")
+	if mType == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	mValue := r.PathValue("metric_value")
+
+	if err := repository.CheckMetric(mType, mValue); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := memStore.SetValue(mType, mName, mValue); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
 }
 
-func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+func GetMetricHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
 	mType := r.PathValue("metric_type")
 	if mType == "" {
 		w.WriteHeader(http.StatusNotFound)
@@ -59,27 +50,25 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := repository.ServerStorage.GetValue(mType, mName)
+	m, err := memStore.GetValue(mType, mName)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	js, jsErr := json.Marshal(m)
 	if jsErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
 }
 
-func GetMetricValueHandler(w http.ResponseWriter, r *http.Request) {
+func GetMetricValueHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
 	var mValue string
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 	mType := r.PathValue("metric_type")
 	if mType == "" {
 		w.WriteHeader(http.StatusNotFound)
@@ -90,7 +79,7 @@ func GetMetricValueHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	m, err := repository.ServerStorage.GetValue(mType, mName)
+	m, err := memStore.GetValue(mType, mName)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -107,21 +96,31 @@ func GetMetricValueHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(mValue))
 }
 
-func GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	var strPage string
+func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+	var dataHTML []string
+	const tpl = `
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Metrics</title>
+	</head>
+	<body>
+		{{range $m := .}}<div>{{$m}}</div>{{else}}<div></div>{{end}}
+	</body>
+</html>`
 
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	tmpl, err := template.New("metricsHTML").Parse(tpl)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
-	metrics := repository.ServerStorage.GetValues()
-	if len(metrics) == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	strPage = "<html><head><title>Metrics</title></head><body>\n"
+
+	metrics := memStore.GetValues()
+
 	keys := make([]string, 0, len(metrics))
-	for k, _ := range metrics {
+	for k := range metrics {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -129,14 +128,16 @@ func GetMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	for _, k := range keys {
 		switch metrics[k].MType {
 		case models.Counter:
-			strPage += "<p>" + metrics[k].ID + ": " + strconv.FormatInt(*metrics[k].Delta, 10) + "</p>\n"
+			dataHTML = append(dataHTML, metrics[k].ID+": "+strconv.FormatInt(*metrics[k].Delta, 10))
 		case models.Gauge:
-			strPage += "<p>" + metrics[k].ID + ": " + strconv.FormatFloat(*metrics[k].Value, 'f', -1, 64) + "</p>\n"
+			dataHTML = append(dataHTML, metrics[k].ID+": "+strconv.FormatFloat(*metrics[k].Value, 'f', -1, 64))
 		}
 	}
-	strPage += "</body></html>"
 
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(strPage))
+	err = tmpl.ExecuteTemplate(w, "metricsHTML", dataHTML)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+		return
+	}
 }

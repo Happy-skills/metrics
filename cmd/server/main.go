@@ -1,15 +1,18 @@
 package main
 
 import (
+	"log"
+
 	"github.com/Happy-skills/metrics/internal/config"
-	_ "github.com/Happy-skills/metrics/internal/handler"
+	"github.com/Happy-skills/metrics/internal/repository"
 	"github.com/Happy-skills/metrics/internal/service"
 )
 
 func main() {
-	config.ParseServerFlags()
+	options := config.ParseServerFlags()
+	memStore := repository.NewMemStorage()
 
-	if err := service.RunServer(); err != nil {
-		panic(err)
+	if err := service.RunServer(options, memStore); err != nil {
+		log.Fatal(err)
 	}
 }

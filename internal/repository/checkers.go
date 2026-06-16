@@ -1,42 +1,33 @@
 package repository
 
 import (
-	"reflect"
+	"fmt"
 	"strconv"
 
 	models "github.com/Happy-skills/metrics/internal/model"
 )
 
-func CheckMetric(mType string, mValue string) int {
+func CheckMetric(mType string, mValue string) error {
 	if len(mValue) == 0 {
-		return 0
+		return fmt.Errorf("metric value is empty for %s", mType)
 	}
 	if mType == models.Gauge {
-		val, err := strconv.ParseFloat(mValue, 64)
+		_, err := strconv.ParseFloat(mValue, 64)
 		if err != nil {
-			return 0
+			return fmt.Errorf("metric value is invalid for %s, can't parse float", mType)
 		}
-		if reflect.TypeOf(val).Kind() != reflect.Float64 {
-			return 0
-		}
-		if val < 0 {
-			return 0
-		}
-		return 1
+		return nil
 	}
 	if mType == models.Counter {
 		val, err := strconv.ParseInt(mValue, 10, 64)
 		if err != nil {
-			return 0
-		}
-		if reflect.TypeOf(val).Kind() != reflect.Int64 {
-			return 0
+			return fmt.Errorf("metric value is invalid for %s, can't parse int", mType)
 		}
 		if val < 0 {
-			return 0
+			return fmt.Errorf("metric value is negative for %s", mType)
 		}
-		return 1
+		return nil
 	}
 
-	return 0
+	return fmt.Errorf("metric value with unknown type for %s", mType)
 }

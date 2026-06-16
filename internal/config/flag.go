@@ -2,27 +2,28 @@ package config
 
 import "flag"
 
-type agentOptions struct {
+type AgentOptions struct {
 	ServerAddr     string
 	ReportInterval int
 	PollInterval   int
 }
 
-type serverOptions struct {
+type ServerOptions struct {
 	ServerAddr string
 }
 
-var AgentOptions agentOptions
-var ServerOptions serverOptions
-
-func ParseAgentFlags() {
-	flag.StringVar(&AgentOptions.ServerAddr, "a", "localhost:8080", "address and port server")
-	flag.IntVar(&AgentOptions.ReportInterval, "r", 10, "interval in seconds for sending metrics")
-	flag.IntVar(&AgentOptions.PollInterval, "p", 2, "interval in seconds fof getting metrics")
+func ParseAgentFlags() AgentOptions {
+	var options AgentOptions
+	flag.StringVar(&options.ServerAddr, "a", "localhost:8080", "address and port server")
+	flag.IntVar(&options.ReportInterval, "r", 10, "interval in seconds for sending metrics")
+	flag.IntVar(&options.PollInterval, "p", 2, "interval in seconds fof getting metrics")
 	flag.Parse()
+	return options
 }
 
-func ParseServerFlags() {
-	flag.StringVar(&ServerOptions.ServerAddr, "a", "localhost:8080", "address and port to run server on")
+func ParseServerFlags() ServerOptions {
+	var options ServerOptions
+	flag.StringVar(&options.ServerAddr, "a", "localhost:8080", "address and port to run server on")
 	flag.Parse()
+	return options
 }

@@ -6,10 +6,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func InitTestingServerStorage(m repository.MemStorage) error {
+	if err := m.SetValue(models.Counter, "PollCount", "10"); err != nil {
+		return err
+	}
+
+	if err := m.SetValue(models.Gauge, "RandomValue", "0.2569"); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func TestSetMetricHandler(t *testing.T) {
 	type want struct {
@@ -31,26 +44,6 @@ func TestSetMetricHandler(t *testing.T) {
 				requestString:    "update",
 				parametersString: map[string]string{"metric_type": "counter", "metric_name": "PollCount", "metric_value": "10"},
 				msgString:        "POST update/counter/PollCount/10",
-			},
-		},
-		{
-			name: "wrong method Get",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodGet,
-				requestString:    "update",
-				parametersString: map[string]string{"metric_type": "counter", "metric_name": "PollCount", "metric_value": "10"},
-				msgString:        "GET update/counter/PollCount/10",
-			},
-		},
-		{
-			name: "wrong method Put",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodPut,
-				requestString:    "update",
-				parametersString: map[string]string{"metric_type": "counter", "metric_name": "PollCount", "metric_value": "10"},
-				msgString:        "PUT update/counter/PollCount/10",
 			},
 		},
 		{
@@ -94,14 +87,12 @@ func TestSetMetricHandler(t *testing.T) {
 			},
 		},
 	}
-	var ts testing.T
-	if repository.ServerStorage == nil {
-		repository.ServerStorage = repository.NewMemStorage()
-		err := repository.TestServerStorageInit(repository.ServerStorage)
-		if err != nil {
-			ts.Fatal("can't set test values")
-		}
+
+	memStore := repository.NewMemStorage()
+	if err := InitTestingServerStorage(memStore); err != nil {
+		t.Fatal("can't set test values")
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString+"/{metric_type}/{metric_name}/{metric_value}", nil)
@@ -109,8 +100,13 @@ func TestSetMetricHandler(t *testing.T) {
 				request.SetPathValue(k, v)
 			}
 			w := httptest.NewRecorder()
-			SetMetricHandler(w, request)
+			SetMetricHandler(w, request, memStore)
 			res := w.Result()
+			if res.Body != nil {
+				if err := res.Body.Close(); err != nil {
+					t.Fatalf("can't close response body: %s", err.Error())
+				}
+			}
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)
 		})
 	}
@@ -152,30 +148,6 @@ func TestGetMetricHandler(t *testing.T) {
 				containsValue:    "RandomValue",
 				contentType:      "application/json",
 				msgString:        "GET get/gauge/RandomValue",
-			},
-		},
-		{
-			name: "wrong method Post",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodPost,
-				requestString:    "get",
-				parametersString: map[string]string{"metric_type": "gauge", "metric_name": "RandomValue"},
-				containsValue:    "",
-				contentType:      "",
-				msgString:        "POST get/gauge/RandomValue",
-			},
-		},
-		{
-			name: "wrong method Put",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodPut,
-				requestString:    "get",
-				parametersString: map[string]string{"metric_type": "gauge", "metric_name": "RandomValue"},
-				containsValue:    "",
-				contentType:      "",
-				msgString:        "PUT get/gauge/RandomValue",
 			},
 		},
 		{
@@ -235,14 +207,12 @@ func TestGetMetricHandler(t *testing.T) {
 			},
 		},
 	}
-	var ts testing.T
-	if repository.ServerStorage == nil {
-		repository.ServerStorage = repository.NewMemStorage()
-		err := repository.TestServerStorageInit(repository.ServerStorage)
-		if err != nil {
-			ts.Fatal("can't set test values")
-		}
+
+	memStore := repository.NewMemStorage()
+	if err := InitTestingServerStorage(memStore); err != nil {
+		t.Fatal("can't set test values")
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString+"/{metric_type}/{metric_name}", nil)
@@ -250,12 +220,16 @@ func TestGetMetricHandler(t *testing.T) {
 				request.SetPathValue(k, v)
 			}
 			w := httptest.NewRecorder()
-			GetMetricHandler(w, request)
+			GetMetricHandler(w, request, memStore)
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)
-			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
+			if res.Body != nil {
+				if err := res.Body.Close(); err != nil {
+					t.Fatalf("can't close response body: %s", err.Error())
+				}
+			}
 			assert.Contains(t, string(resBody), tt.want.containsValue)
 			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
 		})
@@ -295,26 +269,6 @@ func TestGetMetricValueHandler(t *testing.T) {
 				parametersString: map[string]string{"metric_type": "gauge", "metric_name": "RandomValue"},
 				contentType:      "text/plain",
 				msgString:        "GET value/gauge/RandomValue",
-			},
-		},
-		{
-			name: "wrong method Post",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodPost,
-				requestString:    "value",
-				parametersString: map[string]string{"metric_type": "gauge", "metric_name": "RandomValue"},
-				msgString:        "POST value/gauge/RandomValue",
-			},
-		},
-		{
-			name: "wrong method Put",
-			want: want{
-				code:             http.StatusMethodNotAllowed,
-				requestMethod:    http.MethodPut,
-				requestString:    "value",
-				parametersString: map[string]string{"metric_type": "gauge", "metric_name": "RandomValue"},
-				msgString:        "PUT value/gauge/RandomValue",
 			},
 		},
 		{
@@ -369,14 +323,12 @@ func TestGetMetricValueHandler(t *testing.T) {
 			},
 		},
 	}
-	var ts testing.T
-	if repository.ServerStorage == nil {
-		repository.ServerStorage = repository.NewMemStorage()
-		err := repository.TestServerStorageInit(repository.ServerStorage)
-		if err != nil {
-			ts.Fatal("can't set test values")
-		}
+
+	memStore := repository.NewMemStorage()
+	if err := InitTestingServerStorage(memStore); err != nil {
+		t.Fatal("can't set test values")
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString+"/{metric_type}/{metric_name}", nil)
@@ -384,12 +336,16 @@ func TestGetMetricValueHandler(t *testing.T) {
 				request.SetPathValue(k, v)
 			}
 			w := httptest.NewRecorder()
-			GetMetricValueHandler(w, request)
+			GetMetricValueHandler(w, request, memStore)
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)
-			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
+			if res.Body != nil {
+				if err := res.Body.Close(); err != nil {
+					t.Fatalf("can't close response body: %s", err.Error())
+				}
+			}
 			if res.StatusCode == 200 && !assert.NotEmpty(t, resBody) {
 				t.Fatalf("empty body with response status code 200 for %s", tt.want.msgString)
 			}
@@ -415,46 +371,32 @@ func TestGetMetricsHandler(t *testing.T) {
 			want: want{
 				code:          http.StatusOK,
 				requestMethod: http.MethodGet,
-				contentType:   "text/html",
+				contentType:   "text/html; charset=utf-8",
 				bodyString:    []string{"PollCount", "RandomValue"},
 				msgString:     "GET /",
 			},
 		},
-		{
-			name: "wrong method Post",
-			want: want{
-				code:          http.StatusMethodNotAllowed,
-				requestMethod: http.MethodPost,
-				msgString:     "POST /",
-			},
-		},
-		{
-			name: "wrong method Put",
-			want: want{
-				code:          http.StatusMethodNotAllowed,
-				requestMethod: http.MethodPut,
-				msgString:     "PUT /",
-			},
-		},
 	}
-	var ts testing.T
-	if repository.ServerStorage == nil {
-		repository.ServerStorage = repository.NewMemStorage()
-		err := repository.TestServerStorageInit(repository.ServerStorage)
-		if err != nil {
-			ts.Fatal("can't set test values")
-		}
+
+	memStore := repository.NewMemStorage()
+	if err := InitTestingServerStorage(memStore); err != nil {
+		t.Fatal("can't set test values")
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.want.requestMethod, "/", nil)
 			w := httptest.NewRecorder()
-			GetMetricsHandler(w, request)
+			GetMetricsHandler(w, request, memStore)
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)
-			defer res.Body.Close()
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
+			if res.Body != nil {
+				if err := res.Body.Close(); err != nil {
+					t.Fatalf("can't close response body: %s", err.Error())
+				}
+			}
 			if res.StatusCode == 200 {
 				if !assert.NotEmpty(t, resBody) {
 					t.Fatalf("empty body with response status code 200 for %s", tt.want.msgString)

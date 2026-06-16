@@ -31,14 +31,14 @@ func Test_getMetrics(t *testing.T) {
 				{typeMetric: models.Gauge, nameMetric: "HeapAlloc", typeValue: reflect.Float64}}},
 		},
 	}
-	repository.AgentStorage = repository.NewMemStorage()
+	mStore := repository.NewMemStorage()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := getMetrics(); err != nil {
+			if err := getMetrics(mStore); err != nil {
 				t.Fatalf("getMetrics failed: %s", err.Error())
 			}
 			for i := 0; i < len(tt.want.metrics); i++ {
-				v, _ := repository.AgentStorage.GetValue(tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
+				v, _ := mStore.GetValue(tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
 				if tt.want.metrics[i].typeMetric == models.Counter {
 					if *v.Delta <= 0 {
 						t.Fatalf("delta is zero for %s", tt.want.metrics[i].nameMetric)
@@ -66,15 +66,15 @@ func Test_sendMetrics(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	repository.AgentStorage = repository.NewMemStorage()
-	if err := getMetrics(); err != nil {
+	mStore := repository.NewMemStorage()
+	if err := getMetrics(mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer ts.Close()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetrics(ts.URL); (err != nil) != tt.wantErr {
+			if err := sendMetrics(ts.URL, mStore); (err != nil) != tt.wantErr {
 				t.Errorf("sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
