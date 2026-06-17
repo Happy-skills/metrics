@@ -1,0 +1,141 @@
+package agent
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"runtime"
+	"strconv"
+	"time"
+
+	"github.com/Happy-skills/metrics/internal/config"
+	"gopkg.in/h2non/gentleman.v2"
+
+	models "github.com/Happy-skills/metrics/internal/model"
+	"github.com/Happy-skills/metrics/internal/repository"
+)
+
+func Fields(r runtime.MemStats) map[string]any {
+	return map[string]any{
+		"Alloc":         r.Alloc,
+		"TotalAlloc":    r.TotalAlloc,
+		"Sys":           r.Sys,
+		"Lookups":       r.Lookups,
+		"Mallocs":       r.Mallocs,
+		"Frees":         r.Frees,
+		"HeapAlloc":     r.HeapAlloc,
+		"HeapSys":       r.HeapSys,
+		"HeapIdle":      r.HeapIdle,
+		"HeapInuse":     r.HeapInuse,
+		"HeapReleased":  r.HeapReleased,
+		"HeapObjects":   r.HeapObjects,
+		"StackInuse":    r.StackInuse,
+		"StackSys":      r.StackSys,
+		"MSpanInuse":    r.MSpanInuse,
+		"MSpanSys":      r.MSpanSys,
+		"MCacheInuse":   r.MCacheInuse,
+		"MCacheSys":     r.MCacheSys,
+		"BuckHashSys":   r.BuckHashSys,
+		"GCSys":         r.GCSys,
+		"OtherSys":      r.OtherSys,
+		"NextGC":        r.NextGC,
+		"LastGC":        r.LastGC,
+		"PauseTotalNs":  r.PauseTotalNs,
+		"NumGC":         r.NumGC,
+		"NumForcedGC":   r.NumForcedGC,
+		"GCCPUFraction": r.GCCPUFraction,
+	}
+}
+
+func Run(options config.AgentOptions, memStore repository.MemStorage) {
+	go poolGetting(options.PollInterval, memStore)
+	poolSending(options.ReportInterval, options.ServerAddr, memStore)
+}
+
+func poolGetting(pollInterval int, memStore repository.MemStorage) {
+	for {
+		time.Sleep(time.Duration(pollInterval) * time.Second)
+		if err := getMetrics(memStore); err != nil {
+			log.Printf("getMetrics error: %s", err.Error())
+		}
+	}
+}
+
+func poolSending(pollInterval int, flagServerAddr string, memStore repository.MemStorage) {
+	for {
+		time.Sleep(time.Duration(pollInterval) * time.Second)
+		if err := sendMetrics("http://"+flagServerAddr, memStore); err != nil {
+			log.Printf("sendMetrics error: %s", err.Error())
+		}
+	}
+}
+
+func getMetrics(memStore repository.MemStorage) error {
+	if err := memStore.SetValue(models.Counter, "PollCount", int64(1)); err != nil {
+		return err
+	}
+	if err := memStore.SetValue(models.Gauge, "RandomValue", rand.Float64()); err != nil {
+		return err
+	}
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	for k, v := range Fields(m) {
+		if err := memStore.SetValue(models.Gauge, k, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
+	var sVal string
+	for _, v := range memStore.GetValues() {
+		vType := v.MType
+		switch vType {
+		case models.Counter:
+			sVal = strconv.FormatInt(*v.Delta, 10)
+		case models.Gauge:
+			sVal = strconv.FormatFloat(*v.Value, 'f', -1, 64)
+		}
+		//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
+		url := fmt.Sprintf("%s/update/%s/%s/%s", serverUrl, v.MType, v.ID, sVal)
+		if err := sendUpdateRequest(url); err != nil {
+			log.Fatal(err)
+		}
+
+		if v.ID == "PollCount" {
+			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	return nil
+}
+
+func sendUpdateRequest(url string) error {
+	//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
+	client := gentleman.New()
+	req := client.Request()
+	req.Method(http.MethodPost)
+	req.URL(url)
+	req.SetHeader("Content-Type", "text/plain")
+	response, err := req.Send()
+	if err != nil {
+		return err
+	}
+	defer func(response *gentleman.Response) {
+		err := response.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(response)
+
+	if !response.Ok {
+		return errors.New(response.String())
+	}
+
+	return nil
+}
