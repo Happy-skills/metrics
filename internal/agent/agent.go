@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Happy-skills/metrics/internal/config"
+	"github.com/Happy-skills/metrics/internal/logger"
 	"gopkg.in/h2non/gentleman.v2"
 
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -58,7 +58,7 @@ func poolGetting(pollInterval int, memStore repository.MemStorage) {
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 		if err := getMetrics(memStore); err != nil {
-			log.Printf("getMetrics error: %s", err.Error())
+			logger.Sugar.Errorf("Error getting metrics: %s", err.Error())
 		}
 	}
 }
@@ -67,7 +67,7 @@ func poolSending(pollInterval int, flagServerAddr string, memStore repository.Me
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 		if err := sendMetrics("http://"+flagServerAddr, memStore); err != nil {
-			log.Printf("sendMetrics error: %s", err.Error())
+			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
 		}
 	}
 }
@@ -103,12 +103,12 @@ func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
 		//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 		url := fmt.Sprintf("%s/update/%s/%s/%s", serverUrl, v.MType, v.ID, sVal)
 		if err := sendUpdateRequest(url); err != nil {
-			log.Fatal(err)
+			logger.Sugar.Fatalf("sendMetrics error: %s", err.Error())
 		}
 
 		if v.ID == "PollCount" {
 			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
-				log.Fatal(err)
+				logger.Sugar.Fatalf("ResetValue error: %s", err.Error())
 			}
 		}
 	}
@@ -129,7 +129,7 @@ func sendUpdateRequest(url string) error {
 	defer func(response *gentleman.Response) {
 		err := response.Close()
 		if err != nil {
-			log.Println(err)
+			logger.Log.Error(err.Error())
 		}
 	}(response)
 

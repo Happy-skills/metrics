@@ -1,31 +1,35 @@
 package service
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/handler"
+	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/repository"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 func RunServer(options config.ServerOptions, memStore repository.MemStorage) error {
-	log.Println("Running server ", options.ServerAddr)
+	logger.Log.Info(
+		"Running server",
+		zap.String("addr", options.ServerAddr),
+	)
 
 	r := chi.NewRouter()
-	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.SetMetricHandler(w, r, memStore)
-	})
-	r.Get("/get/{metric_type}/{metric_name}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	r.Get("/get/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricHandler(w, r, memStore)
-	})
-	r.Get("/value/{metric_type}/{metric_name}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	r.Get("/value/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricValueHandler(w, r, memStore)
-	})
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	r.Get("/", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricsHandler(w, r, memStore)
-	})
+	}))
 
 	return http.ListenAndServe(options.ServerAddr, r)
 }
