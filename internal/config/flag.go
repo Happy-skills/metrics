@@ -48,7 +48,7 @@ func ParseAgentFlags() AgentOptions {
 func setAgentFlagByName(opt *AgentOptions, name string) {
 	switch name {
 	case "ADDRESS":
-		flag.StringVar(&opt.ServerAddr, "a", "localhost:8081", "address and port server")
+		flag.StringVar(&opt.ServerAddr, "a", "localhost:8080", "address and port server")
 	case "POLL_INTERVAL":
 		flag.IntVar(&opt.PollInterval, "p", 2, "interval in seconds fof getting metrics")
 	case "REPORT_INTERVAL":
@@ -84,6 +84,6 @@ func ParseServerFlags() ServerOptions {
 func setServerFlagByName(opt *ServerOptions, name string) {
 	switch name {
 	case "ADDRESS":
-		flag.StringVar(&opt.ServerAddr, "a", "localhost:8081", "address and port to run server on")
+		flag.StringVar(&opt.ServerAddr, "a", "localhost:8080", "address and port to run server on")
 	}
 }
