@@ -1,12 +1,14 @@
 package agent
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Happy-skills/metrics/internal/config"
@@ -66,7 +68,7 @@ func poolGetting(pollInterval int, memStore repository.MemStorage) {
 func poolSending(pollInterval int, flagServerAddr string, memStore repository.MemStorage) {
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if err := sendMetrics("http://"+flagServerAddr, memStore); err != nil {
+		if err := sendMetricsByJson("http://"+flagServerAddr, memStore); err != nil {
 			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
 		}
 	}
@@ -102,7 +104,7 @@ func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
 		}
 		//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
 		url := fmt.Sprintf("%s/update/%s/%s/%s", serverUrl, v.MType, v.ID, sVal)
-		if err := sendUpdateRequest(url); err != nil {
+		if err := sendUpdateRequest(url, "text/plain", ""); err != nil {
 			logger.Sugar.Fatalf("sendMetrics error: %s", err.Error())
 		}
 
@@ -115,13 +117,14 @@ func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
 	return nil
 }
 
-func sendUpdateRequest(url string) error {
-	//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
+func sendUpdateRequest(url string, headerValue string, body string) error {
 	client := gentleman.New()
 	req := client.Request()
 	req.Method(http.MethodPost)
 	req.URL(url)
-	req.SetHeader("Content-Type", "text/plain")
+	req.SetHeader("Content-Type", headerValue)
+	req.Body(strings.NewReader(body))
+
 	response, err := req.Send()
 	if err != nil {
 		return err
@@ -137,5 +140,25 @@ func sendUpdateRequest(url string) error {
 		return errors.New(response.String())
 	}
 
+	return nil
+}
+
+func sendMetricsByJson(serverUrl string, memStore repository.MemStorage) error {
+	for _, v := range memStore.GetValues() {
+		url := fmt.Sprintf("%s/update", serverUrl)
+		jsonValue, err := json.Marshal(v)
+		if err != nil {
+			logger.Sugar.Fatalf("parse json error: %s", err.Error())
+		}
+		if err := sendUpdateRequest(url, "application/json", string(jsonValue)); err != nil {
+			logger.Sugar.Fatalf("sendMetrics error: %s", err.Error())
+		}
+
+		if v.ID == "PollCount" {
+			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
+				logger.Sugar.Fatalf("ResetValue error: %s", err.Error())
+			}
+		}
+	}
 	return nil
 }

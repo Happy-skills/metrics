@@ -21,6 +21,12 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage) err
 	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.SetMetricHandler(w, r, memStore)
 	}))
+	r.Post("/update", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		handler.SetMetricByJsonHandler(w, r, memStore)
+	}))
+	r.Post("/value", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		handler.GetMetricValueByJsonHandler(w, r, memStore)
+	}))
 	r.Get("/get/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricHandler(w, r, memStore)
 	}))
