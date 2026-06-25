@@ -148,15 +148,15 @@ func sendMetricsByJson(serverUrl string, memStore repository.MemStorage) error {
 		url := fmt.Sprintf("%s/update", serverUrl)
 		jsonValue, err := json.Marshal(v)
 		if err != nil {
-			logger.Sugar.Fatalf("parse json error: %s", err.Error())
+			logger.Sugar.Errorf("parse json error: %s", err.Error())
 		}
 		if err := sendUpdateRequest(url, "application/json", string(jsonValue)); err != nil {
-			logger.Sugar.Fatalf("sendMetrics error: %s", err.Error())
+			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
 		}
 
 		if v.ID == "PollCount" {
 			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
-				logger.Sugar.Fatalf("ResetValue error: %s", err.Error())
+				logger.Sugar.Errorf("ResetValue error: %s", err.Error())
 			}
 		}
 	}
