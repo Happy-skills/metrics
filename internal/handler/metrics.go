@@ -101,8 +101,7 @@ func GetMetricValueHandler(w http.ResponseWriter, r *http.Request, memStore repo
 
 func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
 	var dataHTML []string
-	const tpl = `
-<!DOCTYPE html>
+	const tpl = `<!DOCTYPE html>
 <html>
 	<head>
 		<meta charset="UTF-8">
@@ -137,6 +136,9 @@ func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore reposito
 		}
 	}
 
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Del("Content-Length")
 	err = tmpl.ExecuteTemplate(w, "metricsHTML", dataHTML)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

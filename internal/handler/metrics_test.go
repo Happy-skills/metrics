@@ -376,7 +376,7 @@ func TestGetMetricsHandler(t *testing.T) {
 			want: want{
 				code:          http.StatusOK,
 				requestMethod: http.MethodGet,
-				contentType:   "text/html; charset=utf-8",
+				contentType:   "text/html",
 				bodyString:    []string{"PollCount", "RandomValue"},
 				msgString:     "GET /",
 			},
@@ -396,6 +396,7 @@ func TestGetMetricsHandler(t *testing.T) {
 			res := w.Result()
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)
 			resBody, err := io.ReadAll(res.Body)
+			t.Log(string(resBody))
 			require.NoError(t, err)
 			if res.Body != nil {
 				if err := res.Body.Close(); err != nil {

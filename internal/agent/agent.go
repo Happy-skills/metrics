@@ -1,16 +1,20 @@
 package agent
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Happy-skills/metrics/internal/compress"
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"gopkg.in/h2non/gentleman.v2"
@@ -68,7 +72,7 @@ func poolGetting(pollInterval int, memStore repository.MemStorage) {
 func poolSending(pollInterval int, flagServerAddr string, memStore repository.MemStorage) {
 	for {
 		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if err := sendMetricsByJson("http://"+flagServerAddr, memStore); err != nil {
+		if err := sendMetricsByJsonWithCompress("http://"+flagServerAddr, memStore); err != nil {
 			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
 		}
 	}
@@ -114,6 +118,7 @@ func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -160,5 +165,76 @@ func sendMetricsByJson(serverUrl string, memStore repository.MemStorage) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+func sendUpdateRequestWithCompress(url string, headerValue string, body []byte) error {
+	client := gentleman.New()
+	req := client.Request()
+	req.Method(http.MethodPost)
+	req.URL(url)
+	req.SetHeader("Content-Type", headerValue)
+
+	contentType := slices.Contains(compress.TypesForGzip, headerValue)
+	if contentType {
+		var buf bytes.Buffer
+		defer buf.Reset()
+
+		g := gzip.NewWriter(&buf)
+		if _, err := g.Write(body); err != nil {
+			logger.Sugar.Errorf("Agent error gzip write: %T %+v", err, err)
+			return err
+		}
+		if err := g.Close(); err != nil {
+			logger.Sugar.Errorf("Agent error gzip close: %T %+v", err, err)
+			return err
+		}
+		body = buf.Bytes()
+		req.SetHeader("Content-Encoding", "gzip")
+		req.SetHeader("Accept-Encoding", "gzip")
+	}
+
+	req.Body(bytes.NewReader(body))
+
+	response, err := req.Send()
+	if err != nil {
+		logger.Sugar.Errorf("Agent error Send: %T %+v", err, err)
+		return err
+	}
+	defer func(response *gentleman.Response) {
+		err := response.Close()
+		if err != nil {
+			logger.Log.Error(err.Error())
+		}
+	}(response)
+
+	if !response.Ok {
+		return errors.New(strconv.Itoa(response.StatusCode))
+	}
+
+	return nil
+}
+
+func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.MemStorage) error {
+	for _, v := range memStore.GetValues() {
+		url := fmt.Sprintf("%s/update", serverUrl)
+		jsonValue, err := json.Marshal(v)
+		if err != nil {
+			logger.Sugar.Errorf("parse json error: %s", err.Error())
+			return err
+		}
+		if err := sendUpdateRequestWithCompress(url, "application/json", jsonValue); err != nil {
+			logger.Sugar.Errorf("sendUpdateRequest error: %s", err.Error())
+			return err
+		}
+
+		if v.ID == "PollCount" {
+			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
+				logger.Sugar.Errorf("ResetValue error: %s", err.Error())
+			}
+		}
+	}
+
 	return nil
 }

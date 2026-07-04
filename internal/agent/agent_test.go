@@ -105,3 +105,28 @@ func Test_sendMetricsByJson(t *testing.T) {
 		})
 	}
 }
+
+func Test_sendMetricsByJsonWithCompress(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantErr bool
+	}{
+		{
+			name:    "positive test",
+			wantErr: false,
+		},
+	}
+	mStore := repository.NewMemStorage()
+	if err := getMetrics(mStore); err != nil {
+		t.Fatalf("getMetrics failed: %s", err.Error())
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer ts.Close()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := sendMetricsByJsonWithCompress(ts.URL, mStore); (err != nil) != tt.wantErr {
+				t.Errorf("sendMetricsByJsonWithCompress() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

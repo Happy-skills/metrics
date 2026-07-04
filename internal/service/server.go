@@ -3,6 +3,7 @@ package service
 import (
 	"net/http"
 
+	"github.com/Happy-skills/metrics/internal/compress"
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/handler"
 	"github.com/Happy-skills/metrics/internal/logger"
@@ -22,27 +23,27 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage) err
 		r.Post("/{metric_type}/{metric_name}/{metric_value}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 			handler.SetMetricHandler(w, r, memStore)
 		}))
-		r.Post("/", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
 			handler.SetMetricByJsonHandler(w, r, memStore)
-		}))
+		})))
 	})
 
 	r.Route("/value", func(r chi.Router) {
 		r.Get("/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 			handler.GetMetricValueHandler(w, r, memStore)
 		}))
-		r.Post("/", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		r.Post("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
 			handler.GetMetricValueByJsonHandler(w, r, memStore)
-		}))
+		})))
 	})
 
 	r.Get("/get/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricHandler(w, r, memStore)
 	}))
 
-	r.Get("/", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricsHandler(w, r, memStore)
-	}))
+	})))
 
 	return http.ListenAndServe(options.ServerAddr, r)
 }
