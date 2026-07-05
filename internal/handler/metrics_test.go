@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
@@ -36,10 +37,12 @@ func TestSetMetricHandler(t *testing.T) {
 	}
 	tests := []struct {
 		name string
+		cfg  config.ServerOptions
 		want want
 	}{
 		{
 			name: "positive test",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:             http.StatusOK,
 				requestMethod:    http.MethodPost,
@@ -50,6 +53,7 @@ func TestSetMetricHandler(t *testing.T) {
 		},
 		{
 			name: "empty value",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:             http.StatusBadRequest,
 				requestMethod:    http.MethodPost,
@@ -60,6 +64,7 @@ func TestSetMetricHandler(t *testing.T) {
 		},
 		{
 			name: "wrong value",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:             http.StatusBadRequest,
 				requestMethod:    http.MethodPost,
@@ -70,6 +75,7 @@ func TestSetMetricHandler(t *testing.T) {
 		},
 		{
 			name: "empty name",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:             http.StatusNotFound,
 				requestMethod:    http.MethodPost,
@@ -80,6 +86,7 @@ func TestSetMetricHandler(t *testing.T) {
 		},
 		{
 			name: "wrong type",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:             http.StatusBadRequest,
 				requestMethod:    http.MethodPost,
@@ -102,7 +109,7 @@ func TestSetMetricHandler(t *testing.T) {
 				request.SetPathValue(k, v)
 			}
 			w := httptest.NewRecorder()
-			SetMetricHandler(w, request, memStore)
+			SetMetricHandler(w, request, tt.cfg, memStore)
 			res := w.Result()
 			if res.Body != nil {
 				if err := res.Body.Close(); err != nil {
@@ -426,10 +433,12 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 	}
 	tests := []struct {
 		name string
+		cfg  config.ServerOptions
 		want want
 	}{
 		{
 			name: "positive counter",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
@@ -440,6 +449,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		},
 		{
 			name: "positive gauge",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
@@ -450,6 +460,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		},
 		{
 			name: "empty value",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
@@ -460,6 +471,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		},
 		{
 			name: "wrong value",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusInternalServerError,
 				requestMethod:  http.MethodPost,
@@ -470,6 +482,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		},
 		{
 			name: "empty name",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
@@ -480,6 +493,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		},
 		{
 			name: "wrong type",
+			cfg:  config.ServerOptions{StoreInterval: 60},
 			want: want{
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
@@ -502,7 +516,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString, bytes.NewBuffer(tt.want.parametersJson))
 			w := httptest.NewRecorder()
-			SetMetricByJsonHandler(w, request, memStore)
+			SetMetricByJsonHandler(w, request, tt.cfg, memStore)
 			res := w.Result()
 			if res.Body != nil {
 				if err := res.Body.Close(); err != nil {
