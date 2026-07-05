@@ -13,6 +13,8 @@ type MemStorage interface {
 	GetValue(mType string, mName string) (*models.Metrics, error)
 	GetValues() map[string]models.Metrics
 	ResetValue(mType string, mName string) error
+	GetValuesSlice() []models.Metrics
+	SetValuesFromSlice(metrics []models.Metrics) error
 }
 
 type memStorage struct {
@@ -137,4 +139,29 @@ func (m *memStorage) ResetValue(mType string, mName string) error {
 	}
 
 	return fmt.Errorf("metrics type %q not supported", mType)
+}
+
+func (m *memStorage) GetValuesSlice() []models.Metrics {
+	var ret []models.Metrics
+	for _, v := range m.metrics {
+		ret = append(ret, *v)
+	}
+	return ret
+}
+
+func (m *memStorage) SetValuesFromSlice(metrics []models.Metrics) error {
+	for _, metric := range metrics {
+		if metric.Value != nil {
+			if err := m.SetValue(metric.MType, metric.ID, *metric.Value); err != nil {
+				return err
+			}
+		}
+		if metric.Delta != nil {
+			if err := m.SetValue(metric.MType, metric.ID, *metric.Delta); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
