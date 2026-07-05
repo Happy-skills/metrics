@@ -2,6 +2,7 @@ package service
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/Happy-skills/metrics/internal/compress"
 	"github.com/Happy-skills/metrics/internal/config"
@@ -21,10 +22,10 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage) err
 	r := chi.NewRouter()
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/{metric_type}/{metric_name}/{metric_value}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.SetMetricHandler(w, r, memStore)
+			handler.SetMetricHandler(w, r, options, memStore)
 		}))
 		r.Post("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.SetMetricByJsonHandler(w, r, memStore)
+			handler.SetMetricByJsonHandler(w, r, options, memStore)
 		})))
 	})
 
@@ -46,4 +47,18 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage) err
 	})))
 
 	return http.ListenAndServe(options.ServerAddr, r)
+}
+
+func WriteMetrics(cfg config.ServerOptions, memStore repository.MemStorage) {
+	ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := repository.WriteMetricsInFile(cfg, memStore); err != nil {
+				logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
+			}
+		}
+	}
 }

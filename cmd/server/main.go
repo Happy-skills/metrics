@@ -17,6 +17,14 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	if options.RestoreOnStart {
+		repository.LoadMetricsFromFile(options, memStore)
+	}
+
+	if options.StoreInterval > 0 {
+		go service.WriteMetrics(options, memStore)
+	}
+
 	if err := service.RunServer(options, memStore); err != nil {
 		logger.Log.Fatal(err.Error())
 	}

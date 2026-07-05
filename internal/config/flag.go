@@ -16,7 +16,10 @@ type AgentOptions struct {
 }
 
 type ServerOptions struct {
-	ServerAddr string `env:"ADDRESS,required"`
+	ServerAddr      string `env:"ADDRESS,required"`
+	StoreInterval   int    `env:"STORE_INTERVAL,required"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH,required"`
+	RestoreOnStart  bool   `env:"RESTORE,required"`
 }
 
 func ParseAgentFlags() AgentOptions {
@@ -85,5 +88,11 @@ func setServerFlagByName(opt *ServerOptions, name string) {
 	switch name {
 	case "ADDRESS":
 		flag.StringVar(&opt.ServerAddr, "a", "localhost:8080", "address and port to run server on")
+	case "STORE_INTERVAL":
+		flag.IntVar(&opt.StoreInterval, "i", 300, "time interval for write metrics in the storage file")
+	case "FILE_STORAGE_PATH":
+		flag.StringVar(&opt.FileStoragePath, "f", "C:/files/metrics.txt", "path to the storage file")
+	case "RESTORE":
+		flag.BoolVar(&opt.RestoreOnStart, "r", true, "need to read previous saved metrics from file?")
 	}
 }

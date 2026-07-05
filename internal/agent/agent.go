@@ -61,19 +61,29 @@ func Run(options config.AgentOptions, memStore repository.MemStorage) {
 }
 
 func poolGetting(pollInterval int, memStore repository.MemStorage) {
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if err := getMetrics(memStore); err != nil {
-			logger.Sugar.Errorf("Error getting metrics: %s", err.Error())
+		select {
+		case <-ticker.C:
+			if err := getMetrics(memStore); err != nil {
+				logger.Sugar.Errorf("Error getting metrics: %s", err.Error())
+			}
 		}
 	}
 }
 
 func poolSending(pollInterval int, flagServerAddr string, memStore repository.MemStorage) {
+	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Duration(pollInterval) * time.Second)
-		if err := sendMetricsByJsonWithCompress("http://"+flagServerAddr, memStore); err != nil {
-			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
+		select {
+		case <-ticker.C:
+			if err := sendMetricsByJsonWithCompress("http://"+flagServerAddr, memStore); err != nil {
+				logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
+			}
 		}
 	}
 }
