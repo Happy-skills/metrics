@@ -11,16 +11,17 @@ import (
 
 func WriteMetricsInFile(cfg config.ServerOptions, memStore MemStorage) error {
 	fd, err := os.Create(cfg.FileStoragePath)
+	if err != nil {
+		logger.Sugar.Errorf("Failed to create/open file for writing: %s", err.Error())
+		return err
+	}
 	defer func(fd *os.File) {
 		err := fd.Close()
 		if err != nil {
 			logger.Sugar.Errorf("Failed to close file: %s", err.Error())
 		}
 	}(fd)
-	if err != nil {
-		logger.Sugar.Errorf("Failed to create/open file for writing: %s", err.Error())
-		return err
-	}
+
 	metrics := memStore.GetValuesSlice()
 	js, err := json.Marshal(metrics)
 	if err != nil {

@@ -25,6 +25,8 @@ func GzipHandler(h http.HandlerFunc) http.HandlerFunc {
 			cw := newCompressWriter(w)
 			w = cw
 			defer cw.Close()
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Del("Content-Length")
 		}
 
 		h.ServeHTTP(w, r)

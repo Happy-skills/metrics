@@ -143,9 +143,7 @@ func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore reposito
 		}
 	}
 
-	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "text/html")
-	w.Header().Del("Content-Length")
 	err = tmpl.ExecuteTemplate(w, "metricsHTML", dataHTML)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
