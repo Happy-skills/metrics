@@ -1,29 +1,76 @@
 package config
 
-import "flag"
+import (
+	"errors"
+	"flag"
+	"log"
+
+	"github.com/caarlos0/env/v11"
+)
 
 type AgentOptions struct {
-	ServerAddr     string
-	ReportInterval int
-	PollInterval   int
+	ServerAddr     string `env:"ADDRESS"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
 }
 
 type ServerOptions struct {
-	ServerAddr string
+	ServerAddr      string `env:"ADDRESS"`
+	StoreInterval   int    `env:"STORE_INTERVAL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	RestoreOnStart  bool   `env:"RESTORE"`
 }
 
 func ParseAgentFlags() AgentOptions {
-	var options AgentOptions
-	flag.StringVar(&options.ServerAddr, "a", "localhost:8080", "address and port server")
-	flag.IntVar(&options.ReportInterval, "r", 10, "interval in seconds for sending metrics")
-	flag.IntVar(&options.PollInterval, "p", 2, "interval in seconds fof getting metrics")
-	flag.Parse()
+	options := AgentOptions{
+		ServerAddr:     "localhost:8080",
+		ReportInterval: 10,
+		PollInterval:   2,
+	}
+
+	if err := env.Parse(&options); err != nil {
+		if errors.Is(err, env.ParseError{}) {
+			log.Printf("can't parse agent environment variables: %s", err.Error())
+		}
+	}
+
+	setAgentFlag(&options)
+
 	return options
 }
 
-func ParseServerFlags() ServerOptions {
-	var options ServerOptions
-	flag.StringVar(&options.ServerAddr, "a", "localhost:8080", "address and port to run server on")
+func setAgentFlag(opt *AgentOptions) {
+	flag.StringVar(&opt.ServerAddr, "a", opt.ServerAddr, "address and port server")
+	flag.IntVar(&opt.PollInterval, "p", opt.PollInterval, "interval in seconds fof getting metrics")
+	flag.IntVar(&opt.ReportInterval, "r", opt.ReportInterval, "interval in seconds for sending metrics")
+
 	flag.Parse()
+}
+
+func ParseServerFlags() ServerOptions {
+	options := ServerOptions{
+		ServerAddr:      "localhost:8080",
+		StoreInterval:   300,
+		FileStoragePath: "C:/files/metrics.txt",
+		RestoreOnStart:  true,
+	}
+
+	if err := env.Parse(&options); err != nil {
+		if errors.Is(err, env.ParseError{}) {
+			log.Printf("can't parse agent environment variables: %s", err.Error())
+		}
+	}
+
+	setServerFlag(&options)
+
 	return options
+}
+
+func setServerFlag(opt *ServerOptions) {
+	flag.StringVar(&opt.ServerAddr, "a", opt.ServerAddr, "address and port to run server on")
+	flag.IntVar(&opt.StoreInterval, "i", opt.StoreInterval, "time interval for write metrics in the storage file")
+	flag.StringVar(&opt.FileStoragePath, "f", opt.FileStoragePath, "path to the storage file")
+	flag.BoolVar(&opt.RestoreOnStart, "r", opt.RestoreOnStart, "need to read previous saved metrics from file?")
+
+	flag.Parse()
 }
