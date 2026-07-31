@@ -9,8 +9,10 @@ import (
 
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
+	"github.com/Happy-skills/metrics/internal/mocks"
 	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -650,6 +652,35 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 			}
 			assert.Contains(t, string(resBody), tt.want.containsValue)
 			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
+
+func TestPostgresPingHandler(t *testing.T) {
+	type args struct {
+		w http.ResponseWriter
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "positive ping",
+			args: args{
+				w: httptest.NewRecorder(),
+			},
+		},
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	m := mocks.NewMockDatabase(ctrl)
+	m.EXPECT().PingDB(gomock.Any()).Return(nil)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			PingPostgresHandler(t.Context(), tt.args.w, nil, m)
 		})
 	}
 }

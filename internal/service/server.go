@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func RunServer(options config.ServerOptions, memStore repository.MemStorage) error {
+func RunServer(options config.ServerOptions, memStore repository.MemStorage, repo repository.Database) error {
 	logger.Log.Info(
 		"Running server",
 		zap.String("addr", options.ServerAddr),
@@ -40,6 +40,10 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage) err
 
 	r.Get("/get/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.GetMetricHandler(w, r, memStore)
+	}))
+
+	r.Get("/ping", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		handler.PingPostgresHandler(r.Context(), w, r, repo)
 	}))
 
 	r.Get("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {

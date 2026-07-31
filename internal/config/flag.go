@@ -19,6 +19,7 @@ type ServerOptions struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	RestoreOnStart  bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
 }
 
 func ParseAgentFlags() AgentOptions {
@@ -53,6 +54,7 @@ func ParseServerFlags() ServerOptions {
 		StoreInterval:   300,
 		FileStoragePath: "C:/files/metrics.txt",
 		RestoreOnStart:  true,
+		DatabaseDSN:     "postgres://postgres:123@localhost:5432/metrics",
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -71,6 +73,7 @@ func setServerFlag(opt *ServerOptions) {
 	flag.IntVar(&opt.StoreInterval, "i", opt.StoreInterval, "time interval for write metrics in the storage file")
 	flag.StringVar(&opt.FileStoragePath, "f", opt.FileStoragePath, "path to the storage file")
 	flag.BoolVar(&opt.RestoreOnStart, "r", opt.RestoreOnStart, "need to read previous saved metrics from file?")
+	flag.StringVar(&opt.DatabaseDSN, "d", opt.DatabaseDSN, "database connection string")
 
 	flag.Parse()
 }

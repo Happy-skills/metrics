@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -240,4 +241,13 @@ func GetMetricValueByJsonHandler(w http.ResponseWriter, r *http.Request, memStor
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
+}
+
+func PingPostgresHandler(ctx context.Context, w http.ResponseWriter, _ *http.Request, repo repository.Database) {
+	if err := repo.PingDB(ctx); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
