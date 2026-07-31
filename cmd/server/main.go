@@ -24,7 +24,7 @@ func main() {
 
 	pgxPoll, err := db.InitializeDB(ctx, options.DatabaseDSN)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Println(err.Error())
 	}
 
 	repo := repository.New(pgxPoll)
