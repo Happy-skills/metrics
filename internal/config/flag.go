@@ -54,7 +54,7 @@ func ParseServerFlags() ServerOptions {
 		StoreInterval:   300,
 		FileStoragePath: "C:/files/metrics.txt",
 		RestoreOnStart:  true,
-		DatabaseDSN:     "postgres://postgres:123@localhost:5432/metrics",
+		DatabaseDSN:     "postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
 	}
 
 	if err := env.Parse(&options); err != nil {

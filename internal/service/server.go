@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func RunServer(options config.ServerOptions, memStore repository.MemStorage, repo repository.Database) error {
+func RunServer(options config.ServerOptions, store repository.Storage) error {
 	logger.Log.Info(
 		"Running server",
 		zap.String("addr", options.ServerAddr),
@@ -22,45 +22,45 @@ func RunServer(options config.ServerOptions, memStore repository.MemStorage, rep
 	r := chi.NewRouter()
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/{metric_type}/{metric_name}/{metric_value}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.SetMetricHandler(w, r, options, memStore)
+			handler.SetMetricHandler(r.Context(), w, r, store)
 		}))
 		r.Post("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.SetMetricByJsonHandler(w, r, options, memStore)
+			handler.SetMetricByJsonHandler(r.Context(), w, r, store)
 		})))
 	})
 
 	r.Route("/value", func(r chi.Router) {
 		r.Get("/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.GetMetricValueHandler(w, r, memStore)
+			handler.GetMetricValueHandler(r.Context(), w, r, store)
 		}))
 		r.Post("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
-			handler.GetMetricValueByJsonHandler(w, r, memStore)
+			handler.GetMetricValueByJsonHandler(r.Context(), w, r, store)
 		})))
 	})
 
-	r.Get("/get/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
-		handler.GetMetricHandler(w, r, memStore)
+	r.Get("/metric/{metric_type}/{metric_name}", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
+		handler.GetMetricHandler(r.Context(), w, r, store)
 	}))
 
 	r.Get("/ping", logger.LoggingHandler(func(w http.ResponseWriter, r *http.Request) {
-		handler.PingPostgresHandler(r.Context(), w, r, repo)
+		handler.PingHandler(r.Context(), w, r, store)
 	}))
 
 	r.Get("/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
-		handler.GetMetricsHandler(w, r, memStore)
+		handler.GetMetricsHandler(r.Context(), w, r, store)
 	})))
 
 	return http.ListenAndServe(options.ServerAddr, r)
 }
 
-func WriteMetrics(cfg config.ServerOptions, memStore repository.MemStorage) {
+func WriteMetrics(cfg config.ServerOptions, store repository.Storage) {
 	ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := repository.WriteMetricsInFile(cfg, memStore); err != nil {
+			if err := repository.WriteMetricsInFile(cfg.FileStoragePath, store); err != nil {
 				logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
 			}
 		}

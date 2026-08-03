@@ -16,28 +16,33 @@ func main() {
 	defer cancel()
 
 	options := config.ParseServerFlags()
-	memStore := repository.NewMemStorage()
 
 	if err := logger.Initialize("info"); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	pgxPoll, err := db.InitializeDB(ctx, options.DatabaseDSN)
-	if err != nil {
-		log.Println(err.Error())
+	var store repository.Storage
+
+	if options.DatabaseDSN != "" {
+		pgxPoll, err := db.InitializeDB(ctx, options.DatabaseDSN)
+		if err != nil {
+			log.Println(err.Error())
+		}
+
+		store = repository.NewDBStorage(pgxPoll)
+	} else {
+		store = repository.NewMemStorage(options.FileStoragePath, options.StoreInterval)
+
+		if options.RestoreOnStart && options.FileStoragePath != "" {
+			repository.LoadMetricsFromFile(options, store)
+		}
+
+		if options.FileStoragePath != "" && options.StoreInterval > 0 {
+			go service.WriteMetrics(options, store)
+		}
 	}
 
-	repo := repository.New(pgxPoll)
-
-	if options.RestoreOnStart {
-		repository.LoadMetricsFromFile(options, memStore)
-	}
-
-	if options.StoreInterval > 0 {
-		go service.WriteMetrics(options, memStore)
-	}
-
-	if err := service.RunServer(options, memStore, repo); err != nil {
+	if err := service.RunServer(options, store); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 }

@@ -7,15 +7,18 @@ import (
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/repository"
+	"golang.org/x/net/context"
 )
 
 func main() {
 	options := config.ParseAgentFlags()
-	memStore := repository.NewMemStorage()
+	memStore := repository.NewMemStorage("", 0)
+
+	ctx := context.Background()
 
 	if err := logger.Initialize("info"); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	agent.Run(options, memStore)
+	agent.Run(ctx, options, memStore)
 }

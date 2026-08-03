@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,26 +56,26 @@ func Fields(r runtime.MemStats) map[string]any {
 	}
 }
 
-func Run(options config.AgentOptions, memStore repository.MemStorage) {
-	go poolGetting(options.PollInterval, memStore)
-	poolSending(options.ReportInterval, options.ServerAddr, memStore)
+func Run(ctx context.Context, options config.AgentOptions, memStore repository.Storage) {
+	go poolGetting(ctx, options.PollInterval, memStore)
+	poolSending(ctx, options.ReportInterval, options.ServerAddr, memStore)
 }
 
-func poolGetting(pollInterval int, memStore repository.MemStorage) {
+func poolGetting(ctx context.Context, pollInterval int, memStore repository.Storage) {
 	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			if err := getMetrics(memStore); err != nil {
+			if err := getMetrics(ctx, memStore); err != nil {
 				logger.Sugar.Errorf("Error getting metrics: %s", err.Error())
 			}
 		}
 	}
 }
 
-func poolSending(pollInterval int, flagServerAddr string, memStore repository.MemStorage) {
+func poolSending(ctx context.Context, pollInterval int, flagServerAddr string, memStore repository.Storage) {
 	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	defer ticker.Stop()
 
@@ -88,17 +89,17 @@ func poolSending(pollInterval int, flagServerAddr string, memStore repository.Me
 	}
 }
 
-func getMetrics(memStore repository.MemStorage) error {
-	if err := memStore.SetValue(models.Counter, "PollCount", int64(1)); err != nil {
+func getMetrics(ctx context.Context, memStore repository.Storage) error {
+	if err := memStore.SetValue(ctx, models.Counter, "PollCount", int64(1)); err != nil {
 		return err
 	}
-	if err := memStore.SetValue(models.Gauge, "RandomValue", rand.Float64()); err != nil {
+	if err := memStore.SetValue(ctx, models.Gauge, "RandomValue", rand.Float64()); err != nil {
 		return err
 	}
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	for k, v := range Fields(m) {
-		if err := memStore.SetValue(models.Gauge, k, v); err != nil {
+		if err := memStore.SetValue(ctx, models.Gauge, k, v); err != nil {
 			return err
 		}
 	}
@@ -106,9 +107,9 @@ func getMetrics(memStore repository.MemStorage) error {
 	return nil
 }
 
-func sendMetrics(serverUrl string, memStore repository.MemStorage) error {
+func sendMetrics(serverUrl string, memStore repository.Storage) error {
 	var sVal string
-	for _, v := range memStore.GetValues() {
+	for _, v := range memStore.GetValues(nil) {
 		vType := v.MType
 		switch vType {
 		case models.Counter:
@@ -158,8 +159,8 @@ func sendUpdateRequest(url string, headerValue string, body string) error {
 	return nil
 }
 
-func sendMetricsByJson(serverUrl string, memStore repository.MemStorage) error {
-	for _, v := range memStore.GetValues() {
+func sendMetricsByJson(serverUrl string, memStore repository.Storage) error {
+	for _, v := range memStore.GetValues(nil) {
 		url := fmt.Sprintf("%s/update", serverUrl)
 		jsonValue, err := json.Marshal(v)
 		if err != nil {
@@ -226,8 +227,8 @@ func sendUpdateRequestWithCompress(url string, headerValue string, body []byte) 
 	return nil
 }
 
-func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.MemStorage) error {
-	for _, v := range memStore.GetValues() {
+func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage) error {
+	for _, v := range memStore.GetValues(nil) {
 		url := fmt.Sprintf("%s/update", serverUrl)
 		jsonValue, err := json.Marshal(v)
 		if err != nil {

@@ -31,14 +31,14 @@ func Test_getMetrics(t *testing.T) {
 				{typeMetric: models.Gauge, nameMetric: "HeapAlloc", typeValue: reflect.Float64}}},
 		},
 	}
-	mStore := repository.NewMemStorage()
+	mStore := repository.NewMemStorage("", 0)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := getMetrics(mStore); err != nil {
+			if err := getMetrics(t.Context(), mStore); err != nil {
 				t.Fatalf("getMetrics failed: %s", err.Error())
 			}
 			for i := 0; i < len(tt.want.metrics); i++ {
-				v, _ := mStore.GetValue(tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
+				v, _ := mStore.GetValue(nil, tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
 				if tt.want.metrics[i].typeMetric == models.Counter {
 					if *v.Delta <= 0 {
 						t.Fatalf("delta is zero for %s", tt.want.metrics[i].nameMetric)
@@ -66,8 +66,8 @@ func Test_sendMetrics(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	mStore := repository.NewMemStorage()
-	if err := getMetrics(mStore); err != nil {
+	mStore := repository.NewMemStorage("", 0)
+	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -91,8 +91,8 @@ func Test_sendMetricsByJson(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	mStore := repository.NewMemStorage()
-	if err := getMetrics(mStore); err != nil {
+	mStore := repository.NewMemStorage("", 0)
+	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -116,8 +116,8 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	mStore := repository.NewMemStorage()
-	if err := getMetrics(mStore); err != nil {
+	mStore := repository.NewMemStorage("", 0)
+	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))

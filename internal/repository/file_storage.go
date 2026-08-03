@@ -9,8 +9,8 @@ import (
 	models "github.com/Happy-skills/metrics/internal/model"
 )
 
-func WriteMetricsInFile(cfg config.ServerOptions, memStore MemStorage) error {
-	fd, err := os.Create(cfg.FileStoragePath)
+func WriteMetricsInFile(path string, memStore Storage) error {
+	fd, err := os.Create(path)
 	if err != nil {
 		logger.Sugar.Errorf("Failed to create/open file for writing: %s", err.Error())
 		return err
@@ -37,7 +37,7 @@ func WriteMetricsInFile(cfg config.ServerOptions, memStore MemStorage) error {
 	return nil
 }
 
-func LoadMetricsFromFile(cfg config.ServerOptions, memStore MemStorage) {
+func LoadMetricsFromFile(cfg config.ServerOptions, memStore Storage) {
 	var metrics []models.Metrics
 
 	fd, err := os.OpenFile(cfg.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
