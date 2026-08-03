@@ -52,9 +52,9 @@ func ParseServerFlags() ServerOptions {
 	options := ServerOptions{
 		ServerAddr:      "localhost:8080",
 		StoreInterval:   300,
-		FileStoragePath: "C:/files/metrics.txt",
+		FileStoragePath: "", //"C:/files/metrics.txt",
 		RestoreOnStart:  true,
-		DatabaseDSN:     "postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
+		DatabaseDSN:     "", //"postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
 	}
 
 	if err := env.Parse(&options); err != nil {
