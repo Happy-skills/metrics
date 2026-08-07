@@ -47,17 +47,22 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
 	metric := models.Metrics{}
 
-	rows, err := r.query(ctx, `select name, type, value, delta from metric_values where name = $1 and type = $2`, mName, mType)
+	rows, err := r.query(ctx, `select name, type, value, delta from metric_values where name = $1 and type = $2 limit 1`, mName, mType)
 	if err != nil {
 		logger.Sugar.Errorf("metric_values finding metric error: %s", err.Error())
 		return nil, fmt.Errorf("metric_values finding metric error: %w", err)
 	}
+	defer rows.Close()
 
-	if rows.Next() {
+	for rows.Next() {
 		if err := rows.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
 			logger.Sugar.Errorf("metric_values scan metric error: %s", err.Error())
 			return nil, fmt.Errorf("metric_values scan metric error: %w", err)
 		}
+	}
+
+	if metric.ID == "" {
+		return nil, fmt.Errorf("metric_values metric not found")
 	}
 
 	return &metric, nil
