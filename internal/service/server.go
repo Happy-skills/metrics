@@ -28,7 +28,7 @@ func RunServer(options config.ServerOptions, store repository.Storage) error {
 			handler.SetMetricByJsonHandler(r.Context(), w, r, store)
 		})))
 	})
-	r.Post("/updates", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
+	r.Post("/updates/", logger.LoggingHandler(compress.GzipHandler(func(w http.ResponseWriter, r *http.Request) {
 		handler.SetMetrics(r.Context(), w, r, store)
 	})))
 

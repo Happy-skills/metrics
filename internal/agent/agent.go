@@ -241,7 +241,7 @@ func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage
 	}
 
 	err = sendUpdateRequestWithCompress(
-		fmt.Sprintf("%s/updates", serverUrl),
+		fmt.Sprintf("%s/updates/", serverUrl),
 		"application/json",
 		jsonValues,
 	)
