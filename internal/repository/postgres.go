@@ -22,16 +22,23 @@ func NewDBStorage(pool *pgxpool.Pool) Storage {
 }
 
 func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mValue any) error {
+	var err error
 	if mType == models.Gauge {
-		_, err := r.pool.Exec(ctx, `insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`, mName, mType, mValue)
-		if err != nil {
-			return fmt.Errorf("metric_values insert metric error: %w", err)
-		}
+		err = r.execute(
+			ctx,
+			`insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`,
+			mName, mType, mValue,
+		)
+
 	} else if mType == models.Counter {
-		_, err := r.pool.Exec(ctx, `insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`, mName, mType, mValue)
-		if err != nil {
-			return fmt.Errorf("metric_values insert metric error: %w", err)
-		}
+		err = r.execute(
+			ctx,
+			`insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`,
+			mName, mType, mValue,
+		)
+	}
+	if err != nil {
+		return fmt.Errorf("metric_values insert metric error: %w", err)
 	}
 
 	return nil
@@ -40,10 +47,17 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
 	metric := models.Metrics{}
 
-	row := r.pool.QueryRow(ctx, `select name, type, value, delta from metric_values where name = $1 and type = $2`, mName, mType)
+	rows, err := r.query(ctx, `select name, type, value, delta from metric_values where name = $1 and type = $2`, mName, mType)
+	if err != nil {
+		logger.Sugar.Errorf("metric_values finding metric error: %s", err.Error())
+		return nil, fmt.Errorf("metric_values finding metric error: %w", err)
+	}
 
-	if err := row.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
-		return nil, fmt.Errorf("metric_values scan metric error: %w", err)
+	if rows.Next() {
+		if err := rows.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
+			logger.Sugar.Errorf("metric_values scan metric error: %s", err.Error())
+			return nil, fmt.Errorf("metric_values scan metric error: %w", err)
+		}
 	}
 
 	return &metric, nil
@@ -52,7 +66,7 @@ func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*
 func (r *dbStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 	ret := make(map[string]models.Metrics)
 
-	rows, err := r.pool.Query(ctx, `select name, type, value, delta from metric_values`)
+	rows, err := r.query(ctx, `select name, type, value, delta from metric_values`)
 	if err != nil {
 		logger.Sugar.Errorf("metric_values finding metric error: %w", err)
 		return nil
@@ -140,4 +154,28 @@ func (r *dbStorage) Rollback(ctx context.Context) error {
 	r.tx = nil
 
 	return nil
+}
+
+func (r *dbStorage) execute(ctx context.Context, query string, arguments ...any) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tx != nil {
+		_, err := r.tx.Exec(ctx, query, arguments...)
+		return err
+	}
+
+	_, err := r.pool.Exec(ctx, query, arguments...)
+	return err
+}
+
+func (r *dbStorage) query(ctx context.Context, query string, arguments ...any) (pgx.Rows, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tx != nil {
+		return r.tx.Query(ctx, query, arguments...)
+	}
+
+	return r.pool.Query(ctx, query, arguments...)
 }
