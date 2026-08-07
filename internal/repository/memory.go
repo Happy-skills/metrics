@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -15,7 +14,6 @@ type memStorage struct {
 	metrics      map[string]*models.Metrics
 	filePath     string
 	fileInterval int
-	mu           sync.Mutex
 }
 
 func NewMemStorage(filePath string, fileInterval int) Storage {
@@ -180,16 +178,13 @@ func (m *memStorage) Ping(ctx context.Context) error {
 }
 
 func (m *memStorage) Begin(ctx context.Context) error {
-	m.mu.Lock()
 	return nil
 }
 
 func (m *memStorage) Commit(ctx context.Context) error {
-	m.mu.Unlock()
 	return nil
 }
 
 func (m *memStorage) Rollback(ctx context.Context) error {
-	m.mu.Unlock()
 	return nil
 }
