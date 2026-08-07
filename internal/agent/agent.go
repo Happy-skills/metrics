@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"net/http"
 	"runtime"
@@ -228,18 +229,29 @@ func sendUpdateRequestWithCompress(url string, headerValue string, body []byte) 
 }
 
 func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage) error {
-	for _, v := range memStore.GetValues(nil) {
-		url := fmt.Sprintf("%s/update", serverUrl)
-		jsonValue, err := json.Marshal(v)
-		if err != nil {
-			logger.Sugar.Errorf("parse json error: %s", err.Error())
-			return err
-		}
-		if err := sendUpdateRequestWithCompress(url, "application/json", jsonValue); err != nil {
-			logger.Sugar.Errorf("sendUpdateRequest error: %s", err.Error())
-			return err
-		}
+	values := slices.Collect(maps.Values(memStore.GetValues(nil)))
+	if len(values) == 0 {
+		return nil
+	}
 
+	jsonValues, err := json.Marshal(values)
+	if err != nil {
+		logger.Sugar.Errorf("parse json error: %s", err.Error())
+		return err
+	}
+
+	err = sendUpdateRequestWithCompress(
+		fmt.Sprintf("%s/updates", serverUrl),
+		"application/json",
+		jsonValues,
+	)
+	if err != nil {
+		logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
+		return err
+	}
+
+	// reset counters after send
+	for _, v := range memStore.GetValues(nil) {
 		if v.ID == "PollCount" {
 			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
 				logger.Sugar.Errorf("ResetValue error: %s", err.Error())

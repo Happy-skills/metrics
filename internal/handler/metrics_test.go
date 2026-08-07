@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Happy-skills/metrics/internal/config"
@@ -909,4 +910,21 @@ func TestPostgresPingHandler(t *testing.T) {
 			PingHandler(t.Context(), tt.args.w, nil, m)
 		})
 	}
+}
+
+func TestMetricsHandler(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/updates/", strings.NewReader(`[]`))
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	m := mocks.NewMockStorage(ctrl)
+	m.EXPECT().Begin(gomock.Any()).Return(nil)
+	m.EXPECT().Commit(gomock.Any()).Return(nil)
+	m.EXPECT().Rollback(gomock.Any()).Return(nil)
+
+	SetMetrics(t.Context(), w, r, m)
+
+	assert.Equal(t, http.StatusOK, w.Code)
 }

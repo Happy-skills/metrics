@@ -14,4 +14,8 @@ type Storage interface {
 	GetValuesSlice() []models.Metrics
 	SetValuesFromSlice(metrics []models.Metrics) error
 	Ping(ctx context.Context) error
+
+	Begin(ctx context.Context) error
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
 }

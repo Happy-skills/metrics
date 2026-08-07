@@ -3,14 +3,18 @@ package repository
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type dbStorage struct {
 	pool *pgxpool.Pool
+	tx   pgx.Tx
+	mu   sync.Mutex
 }
 
 func NewDBStorage(pool *pgxpool.Pool) Storage {
@@ -84,4 +88,56 @@ func (r *dbStorage) SetValuesFromSlice(metrics []models.Metrics) error {
 
 func (r *dbStorage) Ping(ctx context.Context) error {
 	return r.pool.Ping(ctx)
+}
+
+func (r *dbStorage) Begin(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tx != nil {
+		return fmt.Errorf("transaction already started")
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	r.tx = tx
+
+	return nil
+}
+
+func (r *dbStorage) Commit(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tx == nil {
+		return fmt.Errorf("transaction not started")
+	}
+
+	if err := r.tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	r.tx = nil
+
+	return nil
+}
+
+func (r *dbStorage) Rollback(ctx context.Context) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.tx == nil {
+		return fmt.Errorf("transaction not started")
+	}
+
+	if err := r.tx.Rollback(ctx); err != nil {
+		return err
+	}
+
+	r.tx = nil
+
+	return nil
 }

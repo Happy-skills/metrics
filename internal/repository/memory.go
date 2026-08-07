@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -14,6 +15,7 @@ type memStorage struct {
 	metrics      map[string]*models.Metrics
 	filePath     string
 	fileInterval int
+	mu           sync.Mutex
 }
 
 func NewMemStorage(filePath string, fileInterval int) Storage {
@@ -21,6 +23,9 @@ func NewMemStorage(filePath string, fileInterval int) Storage {
 }
 
 func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, mValue any) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	var err error
 
 	key := mType + "_" + mName
@@ -120,6 +125,9 @@ func (m *memStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 }
 
 func (m *memStorage) ResetValue(mType string, mName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	key := mType + "_" + mName
 	_, ok := m.metrics[key]
 	if !ok {
@@ -174,5 +182,20 @@ func (m *memStorage) SetValuesFromSlice(metrics []models.Metrics) error {
 }
 
 func (m *memStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (m *memStorage) Begin(ctx context.Context) error {
+	m.mu.Lock()
+	return nil
+}
+
+func (m *memStorage) Commit(ctx context.Context) error {
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *memStorage) Rollback(ctx context.Context) error {
+	m.mu.Unlock()
 	return nil
 }

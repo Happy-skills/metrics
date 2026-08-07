@@ -171,20 +171,56 @@ func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	var mValue string
-	if metric.Delta != nil {
-		mValue = strconv.FormatInt(*metric.Delta, 10)
-	} else if metric.Value != nil {
-		mValue = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
-	}
-
-	if err := repository.CheckMetric(metric.MType, mValue); err != nil {
+	if err := updateMetric(ctx, &metric, store); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := store.SetValue(ctx, metric.MType, metric.ID, mValue); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+}
+
+func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+	var reqMetrics []models.Metrics
+
+	jsonBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Sugar.Errorf("Error reading body: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.Unmarshal(jsonBody, &reqMetrics); err != nil {
+		logger.Sugar.Errorf("Error parsing body: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := store.Begin(ctx); err != nil {
+		logger.Sugar.Errorf("Unable to begin transaction: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer store.Rollback(ctx)
+
+	for _, m := range reqMetrics {
+		if err := updateMetric(ctx, &m, store); err != nil {
+			logger.Sugar.Errorf("Unable to update metric: %s", err.Error())
+
+			if err := store.Rollback(ctx); err != nil {
+				logger.Sugar.Errorf("Unable to rollback transaction: %s", err.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	if err := store.Commit(ctx); err != nil {
+		logger.Sugar.Errorf("Unable to commit transaction: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
