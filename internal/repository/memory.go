@@ -23,9 +23,6 @@ func NewMemStorage(filePath string, fileInterval int) Storage {
 }
 
 func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, mValue any) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	var err error
 
 	key := mType + "_" + mName
@@ -125,9 +122,6 @@ func (m *memStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 }
 
 func (m *memStorage) ResetValue(mType string, mName string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	key := mType + "_" + mName
 	_, ok := m.metrics[key]
 	if !ok {
