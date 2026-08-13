@@ -74,7 +74,20 @@ func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mVa
 	return fmt.Errorf("metrics type %q not supported", mType)
 }
 
-func (m *memStorage) SetValues(ctx context.Context, models []models.Metrics) error {
+func (m *memStorage) SetValues(ctx context.Context, metrics []models.Metrics) error {
+	for _, metric := range metrics {
+		switch metric.MType {
+		case models.Gauge:
+			if err := m.SetValue(ctx, metric.MType, metric.ID, *metric.Value); err != nil {
+				return err
+			}
+		case models.Counter:
+			if err := m.SetValue(ctx, metric.MType, metric.ID, *metric.Delta); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
