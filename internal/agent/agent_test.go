@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
 	"github.com/stretchr/testify/assert"
@@ -129,4 +130,20 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_sendMetricsByJsonWithCompress_fail(t *testing.T) {
+	logger.Initialize("ERROR")
+
+	mStore := repository.NewMemStorage("", 0)
+
+	if err := getMetrics(t.Context(), mStore); err != nil {
+		t.Fatalf("getMetrics failed: %s", err.Error())
+	}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	}))
+	defer ts.Close()
+
+	assert.Error(t, sendMetricsByJsonWithCompress(ts.URL, mStore))
 }
