@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -45,7 +46,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 }
 
 func (r *dbStorage) insertGauge(ctx context.Context, db db, name string, value float64) error {
-	return r.execute(
+	return r.executeWithRetry(
 		ctx,
 		db,
 		`insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`,
@@ -54,7 +55,7 @@ func (r *dbStorage) insertGauge(ctx context.Context, db db, name string, value f
 }
 
 func (r *dbStorage) insertCounter(ctx context.Context, db db, name string, value int64) error {
-	return r.execute(
+	return r.executeWithRetry(
 		ctx,
 		db,
 		`insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`,
@@ -167,11 +168,27 @@ type db interface {
 	Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error)
 }
 
-func (r *dbStorage) execute(ctx context.Context, db db, query string, arguments ...any) error {
-	_, err := db.Exec(ctx, query, arguments...)
-	return err
-}
-
 func (r *dbStorage) query(ctx context.Context, db db, query string, arguments ...any) (pgx.Rows, error) {
 	return db.Query(ctx, query, arguments...)
+}
+
+func (r *dbStorage) executeWithRetry(ctx context.Context, db db, query string, arguments ...any) error {
+	const maxRetries = 3
+	var err error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		_, err = db.Exec(ctx, query, arguments...)
+		if err == nil {
+			return nil
+		}
+
+		if classify(err) == NonRetriable {
+			logger.Sugar.Errorf("error executing query %s: %s", query, err.Error())
+			return err
+		}
+
+		time.Sleep(time.Duration(attempt+(attempt-1)) * time.Second)
+	}
+
+	return fmt.Errorf("error executing query after %d attempts: %w", maxRetries, err)
 }
