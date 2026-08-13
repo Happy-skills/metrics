@@ -920,9 +920,7 @@ func TestMetricsHandler(t *testing.T) {
 	defer ctrl.Finish()
 
 	m := mocks.NewMockStorage(ctrl)
-	m.EXPECT().Begin(gomock.Any()).Return(nil)
-	m.EXPECT().Commit(gomock.Any()).Return(nil)
-	m.EXPECT().Rollback(gomock.Any()).Return(nil)
+	m.EXPECT().SetValues(gomock.Any(), []models.Metrics{}).Return(nil)
 
 	SetMetrics(t.Context(), w, r, m)
 

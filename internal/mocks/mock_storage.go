@@ -35,34 +35,6 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
-// Begin mocks base method.
-func (m *MockStorage) Begin(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Begin", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Begin indicates an expected call of Begin.
-func (mr *MockStorageMockRecorder) Begin(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Begin", reflect.TypeOf((*MockStorage)(nil).Begin), ctx)
-}
-
-// Commit mocks base method.
-func (m *MockStorage) Commit(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Commit", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Commit indicates an expected call of Commit.
-func (mr *MockStorageMockRecorder) Commit(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Commit", reflect.TypeOf((*MockStorage)(nil).Commit), ctx)
-}
-
 // GetValue mocks base method.
 func (m *MockStorage) GetValue(ctx context.Context, mType, mName string) (*models.Metrics, error) {
 	m.ctrl.T.Helper()
@@ -134,20 +106,6 @@ func (mr *MockStorageMockRecorder) ResetValue(mType, mName interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetValue", reflect.TypeOf((*MockStorage)(nil).ResetValue), mType, mName)
 }
 
-// Rollback mocks base method.
-func (m *MockStorage) Rollback(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rollback", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Rollback indicates an expected call of Rollback.
-func (mr *MockStorageMockRecorder) Rollback(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rollback", reflect.TypeOf((*MockStorage)(nil).Rollback), ctx)
-}
-
 // SetValue mocks base method.
 func (m *MockStorage) SetValue(ctx context.Context, mType, mName string, mValue any) error {
 	m.ctrl.T.Helper()
@@ -160,6 +118,20 @@ func (m *MockStorage) SetValue(ctx context.Context, mType, mName string, mValue 
 func (mr *MockStorageMockRecorder) SetValue(ctx, mType, mName, mValue interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetValue", reflect.TypeOf((*MockStorage)(nil).SetValue), ctx, mType, mName, mValue)
+}
+
+// SetValues mocks base method.
+func (m *MockStorage) SetValues(ctx context.Context, models []models.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetValues", ctx, models)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetValues indicates an expected call of SetValues.
+func (mr *MockStorageMockRecorder) SetValues(ctx, models interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetValues", reflect.TypeOf((*MockStorage)(nil).SetValues), ctx, models)
 }
 
 // SetValuesFromSlice mocks base method.

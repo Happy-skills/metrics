@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -20,7 +19,7 @@ func NewMemStorage(filePath string, fileInterval int) Storage {
 	return &memStorage{metrics: make(map[string]*models.Metrics), filePath: filePath, fileInterval: fileInterval}
 }
 
-func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, mValue any) error {
+func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mValue any) error {
 	var err error
 
 	key := mType + "_" + mName
@@ -33,21 +32,9 @@ func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, m
 
 	if mType == models.Gauge {
 		var mVal float64
-
-		switch mValue.(type) {
-		case uint64:
-			mVal = float64(mValue.(uint64))
-		case uint32:
-			mVal = float64(mValue.(uint32))
-		case int64:
-			mVal = float64(mValue.(int64))
-		case float64:
-			mVal = mValue.(float64)
-		case string:
-			mVal, err = strconv.ParseFloat(mValue.(string), 64)
-			if err != nil {
-				return err
-			}
+		mVal, err = toGauge(mValue)
+		if err != nil {
+			return err
 		}
 
 		if m.metrics[key].Value == nil {
@@ -65,21 +52,9 @@ func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, m
 
 	} else if mType == models.Counter {
 		var mVal int64
-
-		switch mValue.(type) {
-		case uint64:
-			mVal = int64(mValue.(uint64))
-		case uint32:
-			mVal = int64(mValue.(uint32))
-		case float64:
-			mVal = int64(mValue.(float64))
-		case int64:
-			mVal = mValue.(int64)
-		case string:
-			mVal, err = strconv.ParseInt(mValue.(string), 10, 64)
-			if err != nil {
-				return err
-			}
+		mVal, err = toCounter(mValue)
+		if err != nil {
+			return err
 		}
 
 		if m.metrics[key].Delta == nil {
@@ -97,6 +72,10 @@ func (m *memStorage) SetValue(ctx context.Context, mType string, mName string, m
 	}
 
 	return fmt.Errorf("metrics type %q not supported", mType)
+}
+
+func (m *memStorage) SetValues(ctx context.Context, models []models.Metrics) error {
+	return nil
 }
 
 func (m *memStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
@@ -174,17 +153,5 @@ func (m *memStorage) SetValuesFromSlice(metrics []models.Metrics) error {
 }
 
 func (m *memStorage) Ping(ctx context.Context) error {
-	return nil
-}
-
-func (m *memStorage) Begin(ctx context.Context) error {
-	return nil
-}
-
-func (m *memStorage) Commit(ctx context.Context) error {
-	return nil
-}
-
-func (m *memStorage) Rollback(ctx context.Context) error {
 	return nil
 }
