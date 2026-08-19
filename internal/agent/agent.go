@@ -128,7 +128,7 @@ func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage
 	// reset counters after send
 	for _, v := range memStore.GetValues(nil) {
 		if v.ID == "PollCount" {
-			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
+			if err := memStore.ResetValue(context.TODO(), models.Counter, "PollCount"); err != nil {
 				logger.Sugar.Errorf("ResetValue error: %s", err.Error())
 			}
 		}

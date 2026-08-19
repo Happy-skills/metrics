@@ -1,10 +1,12 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
+	"maps"
 	"os"
+	"slices"
 
-	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
 )
@@ -22,7 +24,7 @@ func WriteMetricsInFile(path string, memStore Storage) error {
 		}
 	}(fd)
 
-	metrics := memStore.GetValuesSlice()
+	metrics := slices.Collect(maps.Values(memStore.GetValues(context.TODO())))
 	js, err := json.Marshal(metrics)
 	if err != nil {
 		logger.Sugar.Errorf("Failed to marshal metric: %s", err.Error())
@@ -37,10 +39,10 @@ func WriteMetricsInFile(path string, memStore Storage) error {
 	return nil
 }
 
-func LoadMetricsFromFile(cfg config.ServerOptions, memStore Storage) {
+func LoadMetricsFromFile(path string, memStore Storage) {
 	var metrics []models.Metrics
 
-	fd, err := os.OpenFile(cfg.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
+	fd, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		logger.Sugar.Errorf("Failed to open file : %s", err.Error())
 	}
@@ -56,7 +58,7 @@ func LoadMetricsFromFile(cfg config.ServerOptions, memStore Storage) {
 		return
 	}
 
-	if err := memStore.SetValuesFromSlice(metrics); err != nil {
-		logger.Sugar.Errorf("Failed to store metric: %s", err.Error())
+	if err := memStore.SetValues(context.TODO(), metrics); err != nil {
+		logger.Sugar.Errorf("Failed to load metric to store: %s", err.Error())
 	}
 }

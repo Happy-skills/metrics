@@ -64,20 +64,6 @@ func (mr *MockStorageMockRecorder) GetValues(ctx interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetValues", reflect.TypeOf((*MockStorage)(nil).GetValues), ctx)
 }
 
-// GetValuesSlice mocks base method.
-func (m *MockStorage) GetValuesSlice() []models.Metrics {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetValuesSlice")
-	ret0, _ := ret[0].([]models.Metrics)
-	return ret0
-}
-
-// GetValuesSlice indicates an expected call of GetValuesSlice.
-func (mr *MockStorageMockRecorder) GetValuesSlice() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetValuesSlice", reflect.TypeOf((*MockStorage)(nil).GetValuesSlice))
-}
-
 // Ping mocks base method.
 func (m *MockStorage) Ping(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -93,17 +79,17 @@ func (mr *MockStorageMockRecorder) Ping(ctx interface{}) *gomock.Call {
 }
 
 // ResetValue mocks base method.
-func (m *MockStorage) ResetValue(mType, mName string) error {
+func (m *MockStorage) ResetValue(ctx context.Context, mType, mName string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResetValue", mType, mName)
+	ret := m.ctrl.Call(m, "ResetValue", ctx, mType, mName)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ResetValue indicates an expected call of ResetValue.
-func (mr *MockStorageMockRecorder) ResetValue(mType, mName interface{}) *gomock.Call {
+func (mr *MockStorageMockRecorder) ResetValue(ctx, mType, mName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetValue", reflect.TypeOf((*MockStorage)(nil).ResetValue), mType, mName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetValue", reflect.TypeOf((*MockStorage)(nil).ResetValue), ctx, mType, mName)
 }
 
 // SetValue mocks base method.
@@ -132,18 +118,4 @@ func (m *MockStorage) SetValues(ctx context.Context, models []models.Metrics) er
 func (mr *MockStorageMockRecorder) SetValues(ctx, models interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetValues", reflect.TypeOf((*MockStorage)(nil).SetValues), ctx, models)
-}
-
-// SetValuesFromSlice mocks base method.
-func (m *MockStorage) SetValuesFromSlice(metrics []models.Metrics) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetValuesFromSlice", metrics)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetValuesFromSlice indicates an expected call of SetValuesFromSlice.
-func (mr *MockStorageMockRecorder) SetValuesFromSlice(metrics interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetValuesFromSlice", reflect.TypeOf((*MockStorage)(nil).SetValuesFromSlice), metrics)
 }

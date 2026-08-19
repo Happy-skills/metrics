@@ -122,60 +122,10 @@ func (m *memStorage) GetValues(_ context.Context) map[string]models.Metrics {
 	return ret
 }
 
-func (m *memStorage) ResetValue(mType string, mName string) error {
-	key := mType + "_" + mName
-	_, ok := m.metrics[key]
-	if !ok {
-		m.metrics[key] = new(models.Metrics)
-		m.metrics[key].MType = mType
-		m.metrics[key].ID = mName
-	}
-
-	if mType == models.Gauge {
-		if m.metrics[key].Value == nil {
-			m.metrics[key].Value = new(float64)
-		}
-		*m.metrics[key].Value = 0
-
-		return nil
-
-	} else if mType == models.Counter {
-		if m.metrics[key].Delta == nil {
-			m.metrics[key].Delta = new(int64)
-		}
-		*m.metrics[key].Delta = 0
-
-		return nil
-	}
-
-	return fmt.Errorf("metrics type %q not supported", mType)
+func (m *memStorage) ResetValue(ctx context.Context, mType string, mName string) error {
+	return m.SetValue(ctx, mType, mName, 0)
 }
 
-func (m *memStorage) GetValuesSlice() []models.Metrics {
-	var ret []models.Metrics
-	for _, v := range m.metrics {
-		ret = append(ret, *v)
-	}
-	return ret
-}
-
-func (m *memStorage) SetValuesFromSlice(metrics []models.Metrics) error {
-	for _, metric := range metrics {
-		if metric.Value != nil {
-			if err := m.SetValue(nil, metric.MType, metric.ID, *metric.Value); err != nil {
-				return err
-			}
-		}
-		if metric.Delta != nil {
-			if err := m.SetValue(nil, metric.MType, metric.ID, *metric.Delta); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (m *memStorage) Ping(ctx context.Context) error {
+func (m *memStorage) Ping(_ context.Context) error {
 	return nil
 }

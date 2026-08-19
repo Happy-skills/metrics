@@ -15,6 +15,8 @@ import (
 const (
 	insertGaugeSQL   = `insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`
 	insertCounterSQL = `insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`
+	selectValueSQL   = `select name, type, value, delta from metric_values where name = $1 and type = $2 limit 1`
+	selectValuesSQL  = `select name, type, value, delta from metric_values`
 )
 
 type dbStorage struct {
@@ -53,12 +55,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
 	metric := models.Metrics{}
 
-	rows, err := r.query(
-		ctx,
-		r.pool,
-		`select name, type, value, delta from metric_values where name = $1 and type = $2 limit 1`,
-		mName, mType,
-	)
+	rows, err := r.query(ctx, r.pool, selectValueSQL, mName, mType)
 	if err != nil {
 		logger.Sugar.Errorf("metric_values finding metric error: %s", err.Error())
 		return nil, fmt.Errorf("metric_values finding metric error: %w", err)
@@ -82,7 +79,7 @@ func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*
 func (r *dbStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 	ret := make(map[string]models.Metrics)
 
-	rows, err := r.query(ctx, r.pool, `select name, type, value, delta from metric_values`)
+	rows, err := r.query(ctx, r.pool, selectValuesSQL)
 	if err != nil {
 		logger.Sugar.Errorf("metric_values finding metric error: %w", err)
 		return nil
@@ -130,19 +127,8 @@ func (r *dbStorage) SetValues(ctx context.Context, metrics []models.Metrics) err
 	return nil
 }
 
-func (r *dbStorage) ResetValue(mType string, mName string) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *dbStorage) GetValuesSlice() []models.Metrics {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *dbStorage) SetValuesFromSlice(metrics []models.Metrics) error {
-	//TODO implement me
-	panic("implement me")
+func (r *dbStorage) ResetValue(ctx context.Context, mType string, mName string) error {
+	return r.SetValue(ctx, mType, mName, 0)
 }
 
 func (r *dbStorage) Ping(ctx context.Context) error {

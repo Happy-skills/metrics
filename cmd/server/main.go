@@ -46,7 +46,7 @@ func initStorage(options config.ServerOptions) (repository.Storage, error) {
 	store := repository.NewMemStorage(options.FileStoragePath, options.StoreInterval)
 
 	if options.RestoreOnStart && options.FileStoragePath != "" {
-		repository.LoadMetricsFromFile(options, store)
+		repository.LoadMetricsFromFile(options.FileStoragePath, store)
 	}
 
 	if options.FileStoragePath != "" && options.StoreInterval > 0 {
