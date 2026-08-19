@@ -20,14 +20,16 @@ func SetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	mType := r.PathValue("metric_type")
 	if mType == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	mValue := r.PathValue("metric_value")
 
-	if err := repository.CheckMetric(mType, mValue); err != nil {
+	if err := repository.CheckMetric(mType, mName, mValue); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -168,11 +170,6 @@ func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	if metric.ID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	var mValue string
 	if metric.Delta != nil {
 		mValue = strconv.FormatInt(*metric.Delta, 10)
@@ -180,7 +177,7 @@ func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.
 		mValue = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
 	}
 
-	if err := repository.CheckMetric(metric.MType, mValue); err != nil {
+	if err := repository.CheckMetric(metric.MType, metric.ID, mValue); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -209,6 +206,20 @@ func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, sto
 		logger.Sugar.Errorf("Error parsing body: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	for _, metric := range reqMetrics {
+		var mValue string
+		if metric.Delta != nil {
+			mValue = strconv.FormatInt(*metric.Delta, 10)
+		} else if metric.Value != nil {
+			mValue = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+		}
+
+		if err := repository.CheckMetric(metric.MType, metric.ID, mValue); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 	if err := store.SetValues(ctx, reqMetrics); err != nil {
