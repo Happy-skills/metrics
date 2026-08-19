@@ -3,13 +3,18 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
+	"github.com/Happy-skills/metrics/internal/retrier"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	insertGaugeSQL   = `insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`
+	insertCounterSQL = `insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`
 )
 
 type dbStorage struct {
@@ -28,7 +33,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.insertGauge(ctx, r.pool, mName, value); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertGaugeSQL, []any{mName, models.Gauge, value}); err != nil {
 			return fmt.Errorf("unable to insert gauge: %w", err)
 		}
 	case models.Counter:
@@ -37,30 +42,12 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.insertCounter(ctx, r.pool, mName, value); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertCounterSQL, []any{mName, models.Counter, value}); err != nil {
 			return fmt.Errorf("unable to insert counter: %w", err)
 		}
 	}
 
 	return nil
-}
-
-func (r *dbStorage) insertGauge(ctx context.Context, db db, name string, value float64) error {
-	return r.executeWithRetry(
-		ctx,
-		db,
-		`insert into metric_values (name,type,value) values ($1,$2,$3) on conflict(name,type) do update set value = $3`,
-		name, models.Gauge, value,
-	)
-}
-
-func (r *dbStorage) insertCounter(ctx context.Context, db db, name string, value int64) error {
-	return r.executeWithRetry(
-		ctx,
-		db,
-		`insert into metric_values (name,type,delta) values ($1,$2,$3) on conflict(name,type) do update set delta = metric_values.delta + $3`,
-		name, models.Counter, value,
-	)
 }
 
 func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
@@ -117,28 +104,27 @@ func (r *dbStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 func (r *dbStorage) SetValues(ctx context.Context, metrics []models.Metrics) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		logger.Sugar.Errorf("metric_values begin transaction error: %s", err.Error())
-		return fmt.Errorf("metric_values begin transaction error: %w", err)
+		return fmt.Errorf("begin transaction error: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	for _, m := range metrics {
+	batch := &pgx.Batch{}
 
+	for _, m := range metrics {
 		switch m.MType {
 		case models.Gauge:
-			if err := r.insertGauge(ctx, tx, m.ID, *m.Value); err != nil {
-				return fmt.Errorf("unable to insert gauge: %w", err)
-			}
+			batch.Queue(insertGaugeSQL, []any{m.ID, models.Gauge, *m.Value})
 		case models.Counter:
-			if err := r.insertCounter(ctx, tx, m.ID, *m.Delta); err != nil {
-				return fmt.Errorf("unable to insert counter: %w", err)
-			}
+			batch.Queue(insertCounterSQL, []any{m.ID, models.Counter, *m.Delta})
 		}
 	}
 
+	if err := r.executeBatchWithRetry(ctx, tx, batch); err != nil {
+		return fmt.Errorf("execute batch error: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
-		logger.Sugar.Errorf("metric_values commit transaction error: %s", err.Error())
-		return fmt.Errorf("metric_values commit transaction error: %w", err)
+		return fmt.Errorf("commit transaction error: %w", err)
 	}
 
 	return nil
@@ -166,29 +152,33 @@ func (r *dbStorage) Ping(ctx context.Context) error {
 type db interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error)
+	SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
 }
 
 func (r *dbStorage) query(ctx context.Context, db db, query string, arguments ...any) (pgx.Rows, error) {
 	return db.Query(ctx, query, arguments...)
 }
 
-func (r *dbStorage) executeWithRetry(ctx context.Context, db db, query string, arguments ...any) error {
-	const maxRetries = 3
-	var err error
+func (r *dbStorage) executeBatchWithRetry(ctx context.Context, db db, batch *pgx.Batch) error {
+	return retrier.Retrier(func() (isRetriable bool, err error) {
+		err = db.SendBatch(ctx, batch).Close()
+		if err == nil {
+			return false, nil
+		}
 
-	for attempt := 1; attempt <= maxRetries; attempt++ {
+		return classify(err) == Retriable,
+			fmt.Errorf("error batching queries: %w", err)
+	})
+}
+
+func (r *dbStorage) executeWithRetry(ctx context.Context, db db, query string, arguments ...any) error {
+	return retrier.Retrier(func() (isRetriable bool, err error) {
 		_, err = db.Exec(ctx, query, arguments...)
 		if err == nil {
-			return nil
+			return false, nil
 		}
 
-		if classify(err) == NonRetriable {
-			logger.Sugar.Errorf("error executing query %s: %s", query, err.Error())
-			return err
-		}
-
-		time.Sleep(time.Duration(attempt+(attempt-1)) * time.Second)
-	}
-
-	return fmt.Errorf("error executing query after %d attempts: %w", maxRetries, err)
+		return classify(err) == Retriable,
+			fmt.Errorf("error executing query %s: %w", query, err)
+	})
 }

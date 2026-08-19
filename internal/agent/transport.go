@@ -6,45 +6,23 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"time"
 
 	"github.com/Happy-skills/metrics/internal/compress"
 	"github.com/Happy-skills/metrics/internal/logger"
+	"github.com/Happy-skills/metrics/internal/retrier"
 	"gopkg.in/h2non/gentleman.v2"
 )
 
 func sendDataWithRetry(url, headerValue string, body []byte) error {
-	const maxRetries = 3
-	var err error
-
-	err = sendData(url, headerValue, body)
-	if err == nil {
-		return nil
-	}
-
-	if classify(err) == NonRetriable {
-		logger.Sugar.Warnf("error sending metrics: %s", err.Error())
-		return err
-	}
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// i=0 -> 0*2+1=1
-		// i=1 -> 1*2+1=3
-		// i=2 -> 2*2+1=5
-		time.Sleep(time.Duration(attempt*2+1) * time.Second)
-
+	return retrier.Retrier(func() (isRetriable bool, err error) {
 		err = sendData(url, headerValue, body)
 		if err == nil {
-			return nil
+			return false, nil
 		}
 
-		if classify(err) == NonRetriable {
-			logger.Sugar.Warnf("error sending metrics: %s", err.Error())
-			return err
-		}
-	}
-
-	return fmt.Errorf("error sending metrics after %d attempts: %w", maxRetries, err)
+		return classify(err) == Retriable,
+			fmt.Errorf("error sending data: %w", err)
+	})
 }
 
 func sendData(url string, headerValue string, body []byte) error {
