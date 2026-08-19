@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -31,10 +32,11 @@ func InitializeDB(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 
 	m, err := migrate.New("file://migrations", dsn)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to initialize migrations: %w", err)
 	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		panic(err)
+
+	if upErr := m.Up(); upErr != nil && !errors.Is(upErr, migrate.ErrNoChange) {
+		return nil, fmt.Errorf("failed to run migrations: %w", upErr)
 	}
 
 	return pgxPool, nil
