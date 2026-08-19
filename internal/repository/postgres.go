@@ -57,14 +57,12 @@ func (r *dbStorage) GetValue(ctx context.Context, mType string, mName string) (*
 
 	rows, err := r.query(ctx, r.pool, selectValueSQL, mName, mType)
 	if err != nil {
-		logger.Sugar.Errorf("metric_values finding metric error: %s", err.Error())
 		return nil, fmt.Errorf("metric_values finding metric error: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if err := rows.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
-			logger.Sugar.Errorf("metric_values scan metric error: %s", err.Error())
 			return nil, fmt.Errorf("metric_values scan metric error: %w", err)
 		}
 	}
@@ -81,17 +79,19 @@ func (r *dbStorage) GetValues(ctx context.Context) map[string]models.Metrics {
 
 	rows, err := r.query(ctx, r.pool, selectValuesSQL)
 	if err != nil {
-		logger.Sugar.Errorf("metric_values finding metric error: %w", err)
-		return nil
+		logger.Sugar.Errorf("query values: %s", err.Error())
+		return ret
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var metric models.Metrics
+
 		if err := rows.Scan(&metric.ID, &metric.MType, &metric.Value, &metric.Delta); err != nil {
-			logger.Sugar.Errorf("metric_values finding metric error: %w", err)
-			return nil
+			logger.Sugar.Errorf("scan values: %s", err.Error())
+			return ret
 		}
+
 		ret[metric.ID] = metric
 	}
 

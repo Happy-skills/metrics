@@ -58,6 +58,7 @@ func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 
 	m, err = store.GetValue(ctx, mType, mName)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric: %s", err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -89,6 +90,7 @@ func GetMetricValueHandler(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	m, err := store.GetValue(ctx, mType, mName)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric: %s", err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -245,6 +247,7 @@ func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	metric, err := store.GetValue(ctx, reqMetric.MType, reqMetric.ID)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric %s: %s", reqMetric.MType, err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
