@@ -13,28 +13,36 @@ import (
 	"gopkg.in/h2non/gentleman.v2"
 )
 
-func sendWithRetry(url, headerValue string, body []byte) error {
+func sendDataWithRetry(url, headerValue string, body []byte) error {
 	const maxRetries = 3
 	var err error
 
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		err = sendUpdateRequestWithCompress(url, headerValue, body)
+	err = sendData(url, headerValue, body)
+	if err == nil {
+		return nil
+	}
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// i=0 -> 0*2+1=1
+		// i=1 -> 1*2+1=3
+		// i=2 -> 2*2+1=5
+		time.Sleep(time.Duration(attempt*2+1) * time.Second)
+
+		err = sendData(url, headerValue, body)
 		if err == nil {
 			return nil
 		}
 
 		if classify(err) == NonRetriable {
-			logger.Sugar.Infof("error sending metrics: %s", err.Error())
+			logger.Sugar.Warnf("error sending metrics: %s", err.Error())
 			return err
 		}
-
-		time.Sleep(time.Duration(attempt+(attempt-1)) * time.Second)
 	}
 
 	return fmt.Errorf("error sending metrics after %d attempts: %w", maxRetries, err)
 }
 
-func sendUpdateRequestWithCompress(url string, headerValue string, body []byte) error {
+func sendData(url string, headerValue string, body []byte) error {
 	client := gentleman.New()
 	req := client.Request()
 	req.Method(http.MethodPost)

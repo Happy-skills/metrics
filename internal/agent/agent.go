@@ -115,7 +115,7 @@ func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage
 		return err
 	}
 
-	err = sendWithRetry(
+	err = sendDataWithRetry(
 		fmt.Sprintf("%s/updates/", serverUrl),
 		"application/json",
 		jsonValues,
