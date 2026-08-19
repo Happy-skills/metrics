@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
@@ -13,6 +14,7 @@ type memStorage struct {
 	metrics      map[string]*models.Metrics
 	filePath     string
 	fileInterval int
+	rw           sync.RWMutex
 }
 
 func NewMemStorage(filePath string, fileInterval int) Storage {
@@ -20,6 +22,9 @@ func NewMemStorage(filePath string, fileInterval int) Storage {
 }
 
 func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mValue any) error {
+	m.rw.Lock()
+	defer m.rw.Unlock()
+
 	var err error
 
 	key := mType + "_" + mName
@@ -91,7 +96,10 @@ func (m *memStorage) SetValues(ctx context.Context, metrics []models.Metrics) er
 	return nil
 }
 
-func (m *memStorage) GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error) {
+func (m *memStorage) GetValue(_ context.Context, mType string, mName string) (*models.Metrics, error) {
+	m.rw.RLock()
+	defer m.rw.RUnlock()
+
 	key := mType + "_" + mName
 	metric, ok := m.metrics[key]
 	if !ok {
@@ -101,7 +109,10 @@ func (m *memStorage) GetValue(ctx context.Context, mType string, mName string) (
 	return metric, nil
 }
 
-func (m *memStorage) GetValues(ctx context.Context) map[string]models.Metrics {
+func (m *memStorage) GetValues(_ context.Context) map[string]models.Metrics {
+	m.rw.RLock()
+	defer m.rw.RUnlock()
+
 	ret := make(map[string]models.Metrics)
 	for k, v := range m.metrics {
 		ret[k] = *new(models.Metrics)

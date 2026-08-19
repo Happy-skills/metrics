@@ -12,8 +12,6 @@ type Storage interface {
 	GetValue(ctx context.Context, mType string, mName string) (*models.Metrics, error)
 	GetValues(ctx context.Context) map[string]models.Metrics
 	SetValues(ctx context.Context, models []models.Metrics) error
-	ResetValue(mType string, mName string) error
-	GetValuesSlice() []models.Metrics
-	SetValuesFromSlice(metrics []models.Metrics) error
+	ResetValue(ctx context.Context, mType string, mName string) error
 	Ping(ctx context.Context) error
 }
