@@ -22,6 +22,11 @@ func sendDataWithRetry(url, headerValue string, body []byte) error {
 		return nil
 	}
 
+	if classify(err) == NonRetriable {
+		logger.Sugar.Warnf("error sending metrics: %s", err.Error())
+		return err
+	}
+
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		// i=0 -> 0*2+1=1
 		// i=1 -> 1*2+1=3
