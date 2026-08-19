@@ -7,6 +7,7 @@ import (
 	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/repository"
+	"github.com/Happy-skills/metrics/internal/retrier"
 	"golang.org/x/net/context"
 )
 
@@ -19,6 +20,8 @@ func main() {
 	if err := logger.Initialize("info"); err != nil {
 		log.Fatal(err.Error())
 	}
+
+	retrier.SetRetries(options.SendRetries)
 
 	agent.Run(ctx, options, memStore)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/Happy-skills/metrics/internal/config/db"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/repository"
+	"github.com/Happy-skills/metrics/internal/retrier"
 	"github.com/Happy-skills/metrics/internal/service"
 	"go.uber.org/zap"
 )
@@ -36,6 +37,8 @@ func initStorage(options config.ServerOptions) (repository.Storage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to init DB: %w", err)
 		}
+
+		retrier.SetRetries(options.DatabaseRetries)
 
 		return repository.NewDBStorage(pgxPoll), nil
 	}

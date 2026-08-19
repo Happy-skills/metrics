@@ -7,10 +7,15 @@ import (
 	"github.com/Happy-skills/metrics/internal/logger"
 )
 
+var maxRetries = 3
+
+func SetRetries(value int) {
+	maxRetries = value
+}
+
 type Retry func() (isRetriable bool, err error)
 
 func Retrier(fn Retry) error {
-	const maxRetries = 3
 	var err error
 	var isRetriable bool
 
