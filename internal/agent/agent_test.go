@@ -57,56 +57,6 @@ func Test_getMetrics(t *testing.T) {
 	}
 }
 
-func Test_sendMetrics(t *testing.T) {
-	tests := []struct {
-		name    string
-		wantErr bool
-	}{
-		{
-			name:    "positive test",
-			wantErr: false,
-		},
-	}
-	mStore := repository.NewMemStorage("", 0)
-	if err := getMetrics(t.Context(), mStore); err != nil {
-		t.Fatalf("getMetrics failed: %s", err.Error())
-	}
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	defer ts.Close()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetrics(ts.URL, mStore); (err != nil) != tt.wantErr {
-				t.Errorf("sendMetrics() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_sendMetricsByJson(t *testing.T) {
-	tests := []struct {
-		name    string
-		wantErr bool
-	}{
-		{
-			name:    "positive test",
-			wantErr: false,
-		},
-	}
-	mStore := repository.NewMemStorage("", 0)
-	if err := getMetrics(t.Context(), mStore); err != nil {
-		t.Fatalf("getMetrics failed: %s", err.Error())
-	}
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	defer ts.Close()
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetricsByJson(ts.URL, mStore); (err != nil) != tt.wantErr {
-				t.Errorf("sendMetricsByJson() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 	tests := []struct {
 		name    string

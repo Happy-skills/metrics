@@ -3,94 +3,15 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Happy-skills/metrics/internal/compress"
 	"github.com/Happy-skills/metrics/internal/logger"
-	"github.com/Happy-skills/metrics/internal/model"
-	"github.com/Happy-skills/metrics/internal/repository"
 	"gopkg.in/h2non/gentleman.v2"
 )
-
-func sendMetrics(serverUrl string, memStore repository.Storage) error {
-	var sVal string
-	for _, v := range memStore.GetValues(nil) {
-		vType := v.MType
-		switch vType {
-		case models.Counter:
-			sVal = strconv.FormatInt(*v.Delta, 10)
-		case models.Gauge:
-			sVal = strconv.FormatFloat(*v.Value, 'f', -1, 64)
-		}
-		//http://<АДРЕС_СЕРВЕРА>/update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
-		url := fmt.Sprintf("%s/update/%s/%s/%s", serverUrl, v.MType, v.ID, sVal)
-		if err := sendUpdateRequest(url, "text/plain", ""); err != nil {
-			logger.Sugar.Fatalf("sendMetrics error: %s", err.Error())
-		}
-
-		if v.ID == "PollCount" {
-			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
-				logger.Sugar.Fatalf("ResetValue error: %s", err.Error())
-			}
-		}
-	}
-
-	return nil
-}
-
-func sendUpdateRequest(url string, headerValue string, body string) error {
-	client := gentleman.New()
-	req := client.Request()
-	req.Method(http.MethodPost)
-	req.URL(url)
-	req.SetHeader("Content-Type", headerValue)
-	req.Body(strings.NewReader(body))
-
-	response, err := req.Send()
-	if err != nil {
-		return err
-	}
-	defer func(response *gentleman.Response) {
-		err := response.Close()
-		if err != nil {
-			logger.Log.Error(err.Error())
-		}
-	}(response)
-
-	if !response.Ok {
-		return errors.New(response.String())
-	}
-
-	return nil
-}
-
-func sendMetricsByJson(serverUrl string, memStore repository.Storage) error {
-	for _, v := range memStore.GetValues(nil) {
-		url := fmt.Sprintf("%s/update", serverUrl)
-		jsonValue, err := json.Marshal(v)
-		if err != nil {
-			logger.Sugar.Errorf("parse json error: %s", err.Error())
-		}
-		if err := sendUpdateRequest(url, "application/json", string(jsonValue)); err != nil {
-			logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
-		}
-
-		if v.ID == "PollCount" {
-			if err := memStore.ResetValue(models.Counter, "PollCount"); err != nil {
-				logger.Sugar.Errorf("ResetValue error: %s", err.Error())
-			}
-		}
-	}
-
-	return nil
-}
 
 func sendWithRetry(url, headerValue string, body []byte) error {
 	const maxRetries = 3
