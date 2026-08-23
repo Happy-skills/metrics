@@ -35,7 +35,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.executeWithRetry(ctx, r.pool, insertGaugeSQL, []any{mName, models.Gauge, value}...); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertGaugeSQL, mName, models.Gauge, value); err != nil {
 			return fmt.Errorf("unable to insert gauge: %w", err)
 		}
 	case models.Counter:
@@ -44,7 +44,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.executeWithRetry(ctx, r.pool, insertCounterSQL, []any{mName, models.Counter, value}...); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertCounterSQL, mName, models.Counter, value); err != nil {
 			return fmt.Errorf("unable to insert counter: %w", err)
 		}
 	}
@@ -110,9 +110,9 @@ func (r *dbStorage) SetValues(ctx context.Context, metrics []models.Metrics) err
 	for _, m := range metrics {
 		switch m.MType {
 		case models.Gauge:
-			batch.Queue(insertGaugeSQL, []any{m.ID, models.Gauge, *m.Value})
+			batch.Queue(insertGaugeSQL, m.ID, models.Gauge, *m.Value)
 		case models.Counter:
-			batch.Queue(insertCounterSQL, []any{m.ID, models.Counter, *m.Delta})
+			batch.Queue(insertCounterSQL, m.ID, models.Counter, *m.Delta)
 		}
 	}
 
