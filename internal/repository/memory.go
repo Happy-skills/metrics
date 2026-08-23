@@ -24,6 +24,20 @@ func NewMemStorage(filePath string) Storage {
 }
 
 func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mValue any) error {
+	if err := m.setValue(mType, mName, mValue); err != nil {
+		return err
+	}
+
+	if m.filePath != "" {
+		if err := WriteMetricsInFile(m.filePath, m); err != nil {
+			logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (m *memStorage) setValue(mType string, mName string, mValue any) error {
 	m.rw.Lock()
 	defer m.rw.Unlock()
 
@@ -37,7 +51,8 @@ func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mVa
 		m.metrics[key].ID = mName
 	}
 
-	if mType == models.Gauge {
+	switch mType {
+	case models.Gauge:
 		var mVal float64
 		mVal, err = toGauge(mValue)
 		if err != nil {
@@ -49,17 +64,8 @@ func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mVa
 		}
 		*m.metrics[key].Value = mVal
 
-		if m.filePath != "" {
-			defer func() {
-				if err := WriteMetricsInFile(m.filePath, m); err != nil {
-					logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
-				}
-			}()
-		}
-
 		return nil
-
-	} else if mType == models.Counter {
+	case models.Counter:
 		var mVal int64
 		mVal, err = toCounter(mValue)
 		if err != nil {
@@ -70,14 +76,6 @@ func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mVa
 			m.metrics[key].Delta = new(int64)
 		}
 		*m.metrics[key].Delta += mVal
-
-		if m.filePath != "" {
-			defer func() {
-				if err := WriteMetricsInFile(m.filePath, m); err != nil {
-					logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
-				}
-			}()
-		}
 
 		return nil
 	}
