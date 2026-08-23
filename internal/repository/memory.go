@@ -11,14 +11,16 @@ import (
 )
 
 type memStorage struct {
-	metrics      map[string]*models.Metrics
-	filePath     string
-	fileInterval int
-	rw           sync.RWMutex
+	metrics  map[string]*models.Metrics
+	filePath string
+	rw       sync.RWMutex
 }
 
-func NewMemStorage(filePath string, fileInterval int) Storage {
-	return &memStorage{metrics: make(map[string]*models.Metrics), filePath: filePath, fileInterval: fileInterval}
+func NewMemStorage(filePath string) Storage {
+	return &memStorage{
+		metrics:  make(map[string]*models.Metrics),
+		filePath: filePath,
+	}
 }
 
 func (m *memStorage) SetValue(_ context.Context, mType string, mName string, mValue any) error {

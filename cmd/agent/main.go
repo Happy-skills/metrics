@@ -13,7 +13,7 @@ import (
 
 func main() {
 	options := config.ParseAgentFlags()
-	memStore := repository.NewMemStorage("", 0)
+	memStore := repository.NewMemStorage("")
 
 	ctx := context.Background()
 

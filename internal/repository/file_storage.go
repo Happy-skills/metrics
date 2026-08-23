@@ -11,7 +11,7 @@ import (
 	models "github.com/Happy-skills/metrics/internal/model"
 )
 
-func WriteMetricsInFile(path string, memStore Storage) error {
+func WriteMetricsInFile(path string, storage Storage) error {
 	fd, err := os.Create(path)
 	if err != nil {
 		logger.Sugar.Errorf("Failed to create/open file for writing: %s", err.Error())
@@ -24,7 +24,7 @@ func WriteMetricsInFile(path string, memStore Storage) error {
 		}
 	}(fd)
 
-	metrics := slices.Collect(maps.Values(memStore.GetValues(context.TODO())))
+	metrics := slices.Collect(maps.Values(storage.GetValues(context.TODO())))
 	js, err := json.Marshal(metrics)
 	if err != nil {
 		logger.Sugar.Errorf("Failed to marshal metric: %s", err.Error())
@@ -39,7 +39,7 @@ func WriteMetricsInFile(path string, memStore Storage) error {
 	return nil
 }
 
-func LoadMetricsFromFile(path string, memStore Storage) {
+func LoadMetricsFromFile(path string, storage Storage) {
 	var metrics []models.Metrics
 
 	fd, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
@@ -58,7 +58,7 @@ func LoadMetricsFromFile(path string, memStore Storage) {
 		return
 	}
 
-	if err := memStore.SetValues(context.TODO(), metrics); err != nil {
+	if err := storage.SetValues(context.TODO(), metrics); err != nil {
 		logger.Sugar.Errorf("Failed to load metric to store: %s", err.Error())
 	}
 }

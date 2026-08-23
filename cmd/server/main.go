@@ -43,14 +43,16 @@ func initStorage(options config.ServerOptions) (repository.Storage, error) {
 		return repository.NewDBStorage(pgxPoll), nil
 	}
 
-	store := repository.NewMemStorage(options.FileStoragePath, options.StoreInterval)
+	store := repository.NewMemStorage(options.FileStoragePath)
 
-	if options.RestoreOnStart && options.FileStoragePath != "" {
-		repository.LoadMetricsFromFile(options.FileStoragePath, store)
-	}
+	if options.FileStoragePath != "" {
+		if options.RestoreOnStart {
+			repository.LoadMetricsFromFile(options.FileStoragePath, store)
+		}
 
-	if options.FileStoragePath != "" && options.StoreInterval > 0 {
-		go service.WriteMetrics(options, store)
+		if options.StoreInterval > 0 {
+			go service.WriteMetrics(options, store)
+		}
 	}
 
 	return store, nil

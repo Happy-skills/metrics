@@ -32,7 +32,7 @@ func Test_getMetrics(t *testing.T) {
 				{typeMetric: models.Gauge, nameMetric: "HeapAlloc", typeValue: reflect.Float64}}},
 		},
 	}
-	mStore := repository.NewMemStorage("", 0)
+	mStore := repository.NewMemStorage("")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := getMetrics(t.Context(), mStore); err != nil {
@@ -67,7 +67,7 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	mStore := repository.NewMemStorage("", 0)
+	mStore := repository.NewMemStorage("")
 	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
@@ -85,7 +85,7 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 func Test_sendMetricsByJsonWithCompress_fail(t *testing.T) {
 	logger.Initialize("ERROR")
 
-	mStore := repository.NewMemStorage("", 0)
+	mStore := repository.NewMemStorage("")
 
 	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())

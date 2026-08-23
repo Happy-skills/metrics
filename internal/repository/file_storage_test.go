@@ -13,7 +13,7 @@ func TestMetricsInFile(t *testing.T) {
 	tempStorage := path.Join(t.TempDir(), "store.json")
 
 	t.Run("WriteMetricsInFile", func(t *testing.T) {
-		outputStore := NewMemStorage("", 0)
+		outputStore := NewMemStorage("")
 
 		err := outputStore.SetValue(t.Context(), models.Gauge, "test", 1234)
 		require.NoError(t, err)
@@ -23,7 +23,7 @@ func TestMetricsInFile(t *testing.T) {
 	})
 
 	t.Run("ReadMetricsInFile", func(t *testing.T) {
-		inputStore := NewMemStorage("", 0)
+		inputStore := NewMemStorage("")
 		LoadMetricsFromFile(tempStorage, inputStore)
 
 		metric, err := inputStore.GetValue(t.Context(), models.Gauge, "test")
