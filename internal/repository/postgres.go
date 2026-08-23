@@ -35,7 +35,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.executeWithRetry(ctx, r.pool, insertGaugeSQL, []any{mName, models.Gauge, value}); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertGaugeSQL, []any{mName, models.Gauge, value}...); err != nil {
 			return fmt.Errorf("unable to insert gauge: %w", err)
 		}
 	case models.Counter:
@@ -44,7 +44,7 @@ func (r *dbStorage) SetValue(ctx context.Context, mType string, mName string, mV
 			return err
 		}
 
-		if err := r.executeWithRetry(ctx, r.pool, insertCounterSQL, []any{mName, models.Counter, value}); err != nil {
+		if err := r.executeWithRetry(ctx, r.pool, insertCounterSQL, []any{mName, models.Counter, value}...); err != nil {
 			return fmt.Errorf("unable to insert counter: %w", err)
 		}
 	}
