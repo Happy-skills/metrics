@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -8,46 +9,44 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/Happy-skills/metrics/internal/config"
 	"github.com/Happy-skills/metrics/internal/logger"
 	models "github.com/Happy-skills/metrics/internal/model"
 	"github.com/Happy-skills/metrics/internal/repository"
 )
 
-func SetMetricHandler(w http.ResponseWriter, r *http.Request, cfg config.ServerOptions, memStore repository.MemStorage) {
+func SetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	mName := r.PathValue("metric_name")
 	if mName == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	mType := r.PathValue("metric_type")
 	if mType == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	mValue := r.PathValue("metric_value")
 
-	if err := repository.CheckMetric(mType, mValue); err != nil {
+	if err := repository.CheckMetric(mType, mName, mValue); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := memStore.SetValue(mType, mName, mValue); err != nil {
+	if err := store.SetValue(ctx, mType, mName, mValue); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	if cfg.StoreInterval == 0 {
-		if err := repository.WriteMetricsInFile(cfg, memStore); err != nil {
-			logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
-		}
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetMetricHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+	var m *models.Metrics
+	var err error
+
 	mType := r.PathValue("metric_type")
 	if mType == "" {
 		w.WriteHeader(http.StatusNotFound)
@@ -59,8 +58,9 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request, memStore repositor
 		return
 	}
 
-	m, err := memStore.GetValue(mType, mName)
+	m, err = store.GetValue(ctx, mType, mName)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric: %s", err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -77,7 +77,7 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request, memStore repositor
 	_, _ = w.Write(js)
 }
 
-func GetMetricValueHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+func GetMetricValueHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var mValue string
 	mType := r.PathValue("metric_type")
 	if mType == "" {
@@ -89,8 +89,10 @@ func GetMetricValueHandler(w http.ResponseWriter, r *http.Request, memStore repo
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	m, err := memStore.GetValue(mType, mName)
+
+	m, err := store.GetValue(ctx, mType, mName)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric: %s", err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -106,7 +108,7 @@ func GetMetricValueHandler(w http.ResponseWriter, r *http.Request, memStore repo
 	_, _ = w.Write([]byte(mValue))
 }
 
-func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+func GetMetricsHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var dataHTML []string
 	const tpl = `<!DOCTYPE html>
 <html>
@@ -126,7 +128,7 @@ func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore reposito
 		return
 	}
 
-	metrics := memStore.GetValues()
+	metrics := store.GetValues(ctx)
 
 	keys := make([]string, 0, len(metrics))
 	for k := range metrics {
@@ -152,7 +154,7 @@ func GetMetricsHandler(w http.ResponseWriter, r *http.Request, memStore reposito
 	}
 }
 
-func SetMetricByJsonHandler(w http.ResponseWriter, r *http.Request, cfg config.ServerOptions, memStore repository.MemStorage) {
+func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var metric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)
@@ -168,11 +170,6 @@ func SetMetricByJsonHandler(w http.ResponseWriter, r *http.Request, cfg config.S
 		return
 	}
 
-	if metric.ID == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	var mValue string
 	if metric.Delta != nil {
 		mValue = strconv.FormatInt(*metric.Delta, 10)
@@ -180,27 +177,62 @@ func SetMetricByJsonHandler(w http.ResponseWriter, r *http.Request, cfg config.S
 		mValue = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
 	}
 
-	if err := repository.CheckMetric(metric.MType, mValue); err != nil {
+	if err := repository.CheckMetric(metric.MType, metric.ID, mValue); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if err := memStore.SetValue(metric.MType, metric.ID, mValue); err != nil {
+	if err := store.SetValue(ctx, metric.MType, metric.ID, mValue); err != nil {
+		logger.Sugar.Errorf("Error setting metric %s: %s", metric.MType, err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	if cfg.StoreInterval == 0 {
-		if err := repository.WriteMetricsInFile(cfg, memStore); err != nil {
-			logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
-		}
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetMetricValueByJsonHandler(w http.ResponseWriter, r *http.Request, memStore repository.MemStorage) {
+func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+	var reqMetrics []models.Metrics
+
+	jsonBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Sugar.Errorf("Error reading body: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.Unmarshal(jsonBody, &reqMetrics); err != nil {
+		logger.Sugar.Errorf("Error parsing body: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, metric := range reqMetrics {
+		var mValue string
+		if metric.Delta != nil {
+			mValue = strconv.FormatInt(*metric.Delta, 10)
+		} else if metric.Value != nil {
+			mValue = strconv.FormatFloat(*metric.Value, 'f', -1, 64)
+		}
+
+		if err := repository.CheckMetric(metric.MType, metric.ID, mValue); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	if err := store.SetValues(ctx, reqMetrics); err != nil {
+		logger.Sugar.Errorf("Error setting metrics: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+}
+
+func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var reqMetric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)
@@ -224,8 +256,9 @@ func GetMetricValueByJsonHandler(w http.ResponseWriter, r *http.Request, memStor
 		return
 	}
 
-	metric, err := memStore.GetValue(reqMetric.MType, reqMetric.ID)
+	metric, err := store.GetValue(ctx, reqMetric.MType, reqMetric.ID)
 	if err != nil {
+		logger.Sugar.Errorf("Failed to get metric %s: %s", reqMetric.MType, err.Error())
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -240,4 +273,13 @@ func GetMetricValueByJsonHandler(w http.ResponseWriter, r *http.Request, memStor
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
+}
+
+func PingHandler(ctx context.Context, w http.ResponseWriter, _ *http.Request, store repository.Storage) {
+	if err := store.Ping(ctx); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

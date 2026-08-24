@@ -12,6 +12,7 @@ type AgentOptions struct {
 	ServerAddr     string `env:"ADDRESS"`
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
+	SendRetries    int    `env:"SEND_RETRIES"`
 }
 
 type ServerOptions struct {
@@ -19,6 +20,8 @@ type ServerOptions struct {
 	StoreInterval   int    `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	RestoreOnStart  bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
+	DatabaseRetries int    `env:"DATABASE_RETRIES"`
 }
 
 func ParseAgentFlags() AgentOptions {
@@ -26,6 +29,7 @@ func ParseAgentFlags() AgentOptions {
 		ServerAddr:     "localhost:8080",
 		ReportInterval: 10,
 		PollInterval:   2,
+		SendRetries:    3,
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -43,6 +47,7 @@ func setAgentFlag(opt *AgentOptions) {
 	flag.StringVar(&opt.ServerAddr, "a", opt.ServerAddr, "address and port server")
 	flag.IntVar(&opt.PollInterval, "p", opt.PollInterval, "interval in seconds fof getting metrics")
 	flag.IntVar(&opt.ReportInterval, "r", opt.ReportInterval, "interval in seconds for sending metrics")
+	flag.IntVar(&opt.SendRetries, "send-retries", opt.SendRetries, "how many times to retry sending metrics")
 
 	flag.Parse()
 }
@@ -51,8 +56,10 @@ func ParseServerFlags() ServerOptions {
 	options := ServerOptions{
 		ServerAddr:      "localhost:8080",
 		StoreInterval:   300,
-		FileStoragePath: "C:/files/metrics.txt",
+		FileStoragePath: "", //"C:/files/metrics.txt",
 		RestoreOnStart:  true,
+		DatabaseDSN:     "", //"postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
+		DatabaseRetries: 3,
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -71,6 +78,8 @@ func setServerFlag(opt *ServerOptions) {
 	flag.IntVar(&opt.StoreInterval, "i", opt.StoreInterval, "time interval for write metrics in the storage file")
 	flag.StringVar(&opt.FileStoragePath, "f", opt.FileStoragePath, "path to the storage file")
 	flag.BoolVar(&opt.RestoreOnStart, "r", opt.RestoreOnStart, "need to read previous saved metrics from file?")
+	flag.StringVar(&opt.DatabaseDSN, "d", opt.DatabaseDSN, "database connection string")
+	flag.IntVar(&opt.DatabaseRetries, "db-retries", opt.DatabaseRetries, "how many times to retry executing queries")
 
 	flag.Parse()
 }
