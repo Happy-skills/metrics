@@ -13,6 +13,7 @@ type AgentOptions struct {
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	SendRetries    int    `env:"SEND_RETRIES"`
+	Key            string `env:"KEY"`
 }
 
 type ServerOptions struct {
@@ -22,6 +23,7 @@ type ServerOptions struct {
 	RestoreOnStart  bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	DatabaseRetries int    `env:"DATABASE_RETRIES"`
+	Key             string `env:"KEY"`
 }
 
 func ParseAgentFlags() AgentOptions {
@@ -30,6 +32,7 @@ func ParseAgentFlags() AgentOptions {
 		ReportInterval: 10,
 		PollInterval:   2,
 		SendRetries:    3,
+		Key:            "secretKey",
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -48,6 +51,7 @@ func setAgentFlag(opt *AgentOptions) {
 	flag.IntVar(&opt.PollInterval, "p", opt.PollInterval, "interval in seconds fof getting metrics")
 	flag.IntVar(&opt.ReportInterval, "r", opt.ReportInterval, "interval in seconds for sending metrics")
 	flag.IntVar(&opt.SendRetries, "send-retries", opt.SendRetries, "how many times to retry sending metrics")
+	flag.StringVar(&opt.Key, "k", opt.Key, "secret key")
 
 	flag.Parse()
 }
@@ -60,6 +64,7 @@ func ParseServerFlags() ServerOptions {
 		RestoreOnStart:  true,
 		DatabaseDSN:     "", //"postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
 		DatabaseRetries: 3,
+		Key:             "secretKey",
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -80,6 +85,7 @@ func setServerFlag(opt *ServerOptions) {
 	flag.BoolVar(&opt.RestoreOnStart, "r", opt.RestoreOnStart, "need to read previous saved metrics from file?")
 	flag.StringVar(&opt.DatabaseDSN, "d", opt.DatabaseDSN, "database connection string")
 	flag.IntVar(&opt.DatabaseRetries, "db-retries", opt.DatabaseRetries, "how many times to retry executing queries")
+	flag.StringVar(&opt.Key, "k", opt.Key, "secret key")
 
 	flag.Parse()
 }
