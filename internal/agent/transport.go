@@ -3,6 +3,9 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"slices"
@@ -13,9 +16,9 @@ import (
 	"gopkg.in/h2non/gentleman.v2"
 )
 
-func sendDataWithRetry(url, headerValue string, body []byte) error {
+func sendDataWithRetry(url, headerValue string, key string, body []byte) error {
 	return retrier.Retrier(func() (isRetriable bool, err error) {
-		err = sendData(url, headerValue, body)
+		err = sendData(url, headerValue, key, body)
 		if err == nil {
 			return false, nil
 		}
@@ -25,7 +28,7 @@ func sendDataWithRetry(url, headerValue string, body []byte) error {
 	})
 }
 
-func sendData(url string, headerValue string, body []byte) error {
+func sendData(url string, headerValue string, key string, body []byte) error {
 	client := gentleman.New()
 	req := client.Request()
 	req.Method(http.MethodPost)
@@ -51,6 +54,16 @@ func sendData(url string, headerValue string, body []byte) error {
 		req.SetHeader("Accept-Encoding", "gzip")
 	}
 
+	if key != "" {
+		h, err := getHashBody(key, body)
+		if err != nil {
+			logger.Sugar.Errorf("Agent error getting hash body: %s", err.Error())
+			return err
+		}
+
+		req.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(h))
+	}
+
 	req.Body(bytes.NewReader(body))
 
 	response, err := req.Send()
@@ -70,4 +83,11 @@ func sendData(url string, headerValue string, body []byte) error {
 	}
 
 	return nil
+}
+
+func getHashBody(key string, body []byte) ([]byte, error) {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(body)
+	s := h.Sum(nil)
+	return s, nil
 }
