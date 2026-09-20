@@ -29,6 +29,8 @@ func CheckHashedBody(key string, hashedData string, body []byte) (bool, error) {
 		return false, fmt.Errorf("error decode hash from header: %w", err)
 	}
 
+	logger.Sugar.Infof("hash from header %s", hashedData)
+	logger.Sugar.Infof("hash from body %s", base64.StdEncoding.EncodeToString(dataRequest))
 	if hmac.Equal(msg, dataRequest) {
 		return true, nil
 	} else {
