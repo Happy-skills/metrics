@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 
@@ -78,7 +79,12 @@ func sendData(url string, headerValue string, key string, body []byte) error {
 	}(response)
 
 	if !response.Ok {
-		return fmt.Errorf("agent error Send: %d %s", response.StatusCode, response.String())
+		b, err := io.ReadAll(response.RawResponse.Body)
+		if err != nil {
+			logger.Sugar.Errorf("Agent error reading response body: %s", err.Error())
+		}
+
+		return fmt.Errorf("agent error Send: %d %s", response.StatusCode, string(b))
 	}
 
 	return nil
