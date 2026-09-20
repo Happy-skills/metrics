@@ -70,31 +70,29 @@ func HashHandler(key string, h http.HandlerFunc) http.HandlerFunc {
 				}
 
 				r.Body = io.NopCloser(bytes.NewBuffer(body))
+			}
 
-				hashResponseWriter := &HashResponseWriter{
-					w: w,
-					b: &bytes.Buffer{},
-				}
+			hashResponseWriter := &HashResponseWriter{
+				w: w,
+				b: &bytes.Buffer{},
+			}
 
-				h.ServeHTTP(hashResponseWriter, r)
+			h.ServeHTTP(hashResponseWriter, r)
 
-				w = hashResponseWriter.w
+			w = hashResponseWriter.w
 
-				b, err := GetHashedBody(key, hashResponseWriter.b.Bytes())
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
+			b, err := GetHashedBody(key, hashResponseWriter.b.Bytes())
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 
-				w.Header().Set("HashSHA256", base64.StdEncoding.EncodeToString(b))
+			w.Header().Set("HashSHA256", base64.StdEncoding.EncodeToString(b))
 
-				_, err = w.Write(hashResponseWriter.b.Bytes())
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
+			_, err = w.Write(hashResponseWriter.b.Bytes())
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 		}
 
