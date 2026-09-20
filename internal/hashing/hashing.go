@@ -20,6 +20,10 @@ func GetHashedBody(key string, body []byte) ([]byte, error) {
 }
 
 func CheckHashedBody(key string, hashedData string, body []byte) (bool, error) {
+	logger.Sugar.Infof("key %s", key)
+	logger.Sugar.Infof("hashedData %s", hashedData)
+	logger.Sugar.Infof("body %s", string(body))
+
 	dataRequest, err := GetHashedBody(key, body)
 	if err != nil {
 		return false, fmt.Errorf("error get hash body: %w", err)
@@ -39,6 +43,8 @@ func CheckHashedBody(key string, hashedData string, body []byte) (bool, error) {
 }
 
 func HashHandler(key string, h http.HandlerFunc) http.HandlerFunc {
+	logger.Sugar.Infof("HashHandler key: %s", key)
+
 	if key == "" {
 		return h
 	} else {
