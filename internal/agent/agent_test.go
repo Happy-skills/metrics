@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -70,6 +71,9 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 		},
 	}
 	mStore := repository.NewMemStorage("")
+	if err := logger.Initialize("info"); err != nil {
+		log.Fatal(err.Error())
+	}
 	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
