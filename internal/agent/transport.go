@@ -40,7 +40,7 @@ func sendData(url string, headerValue string, key string, body []byte) error {
 			logger.Sugar.Errorf("Agent error getting hash body: %s", err.Error())
 			return err
 		}
-		logger.Sugar.Info("Agent error getting hash body: %s", base64.StdEncoding.EncodeToString(h))
+		logger.Sugar.Infof("Agent get hash body: %s", base64.StdEncoding.EncodeToString(h))
 		req.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(h))
 	}
 

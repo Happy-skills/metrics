@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/Happy-skills/metrics/internal/logger"
 )
 
 func GetHashedBody(key string, body []byte) ([]byte, error) {
@@ -53,6 +55,7 @@ func HashHandler(key string, h http.HandlerFunc) http.HandlerFunc {
 					return
 				}
 				if !signValide {
+					logger.Sugar.Infof("hashing failed for key: %s", key)
 					w.WriteHeader(http.StatusBadRequest)
 					return
 				}
