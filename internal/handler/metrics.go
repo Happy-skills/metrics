@@ -40,7 +40,6 @@ func SetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {

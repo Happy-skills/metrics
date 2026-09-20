@@ -32,7 +32,7 @@ func ParseAgentFlags() AgentOptions {
 		ReportInterval: 10,
 		PollInterval:   2,
 		SendRetries:    3,
-		Key:            "secretKey",
+		Key:            "",
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -64,7 +64,7 @@ func ParseServerFlags() ServerOptions {
 		RestoreOnStart:  true,
 		DatabaseDSN:     "", //"postgres://postgres:123@localhost:5432/metrics?sslmode=disable",
 		DatabaseRetries: 3,
-		Key:             "secretKey",
+		Key:             "",
 	}
 
 	if err := env.Parse(&options); err != nil {
