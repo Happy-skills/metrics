@@ -14,10 +14,10 @@ func (w *HashResponseWriter) Write(p []byte) (int, error) {
 	return w.b.Write(p)
 }
 
-func (c *HashResponseWriter) Header() http.Header {
-	return c.w.Header()
+func (w *HashResponseWriter) Header() http.Header {
+	return w.w.Header()
 }
 
-func (c *HashResponseWriter) WriteHeader(statusCode int) {
-	c.w.WriteHeader(statusCode)
+func (w *HashResponseWriter) WriteHeader(statusCode int) {
+	w.w.WriteHeader(statusCode)
 }
