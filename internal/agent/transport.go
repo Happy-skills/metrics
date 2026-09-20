@@ -3,14 +3,13 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"net/http"
 	"slices"
 
 	"github.com/Happy-skills/metrics/internal/compress"
+	"github.com/Happy-skills/metrics/internal/hashing"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/retrier"
 	"gopkg.in/h2non/gentleman.v2"
@@ -35,6 +34,16 @@ func sendData(url string, headerValue string, key string, body []byte) error {
 	req.URL(url)
 	req.SetHeader("Content-Type", headerValue)
 
+	if key != "" {
+		h, err := hashing.GetHashedBody(key, body)
+		if err != nil {
+			logger.Sugar.Errorf("Agent error getting hash body: %s", err.Error())
+			return err
+		}
+		logger.Sugar.Info("Agent error getting hash body: %s", base64.StdEncoding.EncodeToString(h))
+		req.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(h))
+	}
+
 	contentType := slices.Contains(compress.TypesForGzip, headerValue)
 	if contentType {
 		var buf bytes.Buffer
@@ -52,16 +61,6 @@ func sendData(url string, headerValue string, key string, body []byte) error {
 		body = buf.Bytes()
 		req.SetHeader("Content-Encoding", "gzip")
 		req.SetHeader("Accept-Encoding", "gzip")
-	}
-
-	if key != "" {
-		h, err := getHashBody(key, body)
-		if err != nil {
-			logger.Sugar.Errorf("Agent error getting hash body: %s", err.Error())
-			return err
-		}
-
-		req.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(h))
 	}
 
 	req.Body(bytes.NewReader(body))
@@ -83,11 +82,4 @@ func sendData(url string, headerValue string, key string, body []byte) error {
 	}
 
 	return nil
-}
-
-func getHashBody(key string, body []byte) ([]byte, error) {
-	h := hmac.New(sha256.New, []byte(key))
-	h.Write(body)
-	s := h.Sum(nil)
-	return s, nil
 }
