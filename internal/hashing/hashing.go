@@ -49,6 +49,7 @@ func HashHandler(key string, h http.HandlerFunc) http.HandlerFunc {
 		return h
 	} else {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+			logger.Sugar.Infof("HashHandler contentHash: %s", r.URL.Path)
 			contentHash := r.Header.Get("HashSHA256")
 			logger.Sugar.Infof("HashHandler contentHash: %s", contentHash)
 			if contentHash != "" {
