@@ -40,7 +40,6 @@ func SetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
@@ -73,7 +72,6 @@ func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
 }
 
@@ -104,7 +102,6 @@ func GetMetricValueHandler(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(mValue))
 }
 
@@ -189,7 +186,6 @@ func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
@@ -229,7 +225,6 @@ func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, sto
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
@@ -271,7 +266,6 @@ func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
 }
 
