@@ -573,7 +573,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 		code           int
 		requestMethod  string
 		requestString  string
-		parametersJson []byte
+		parametersJSON []byte
 		msgString      string
 		mock           func(m *mocks.MockStorage)
 	}
@@ -589,7 +589,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"id":"PollCount", "type":"counter", "delta":10}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"counter", "delta":10}`),
 				msgString:      "POST update",
 				mock: func(m *mocks.MockStorage) {
 					m.EXPECT().SetValue(gomock.Any(), "counter", "PollCount", "10").
@@ -605,7 +605,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"id":"RandomValue", "type":"gauge", "value":1.65892}`),
+				parametersJSON: []byte(`{"id":"RandomValue", "type":"gauge", "value":1.65892}`),
 				msgString:      "POST update",
 				mock: func(m *mocks.MockStorage) {
 					m.EXPECT().SetValue(gomock.Any(), "gauge", "RandomValue", "1.65892").
@@ -621,7 +621,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"id":"PollCount", "type":"counter"}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"counter"}`),
 				msgString:      "POST update",
 				mock:           func(m *mocks.MockStorage) {},
 			},
@@ -633,7 +633,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusInternalServerError,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"id":"PollCount", "type":"counter", "delta":10.953644889}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"counter", "delta":10.953644889}`),
 				msgString:      "POST update",
 				mock:           func(m *mocks.MockStorage) {},
 			},
@@ -645,7 +645,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"type":"counter", "value":10}`),
+				parametersJSON: []byte(`{"type":"counter", "value":10}`),
 				msgString:      "POST update",
 				mock:           func(m *mocks.MockStorage) {},
 			},
@@ -657,7 +657,7 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 				code:           http.StatusBadRequest,
 				requestMethod:  http.MethodPost,
 				requestString:  "update",
-				parametersJson: []byte(`{"id":"PollCount", "type":"count", "delta":10}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"count", "delta":10}`),
 				msgString:      "POST update",
 				mock:           func(m *mocks.MockStorage) {},
 			},
@@ -675,13 +675,13 @@ func TestSetMetricByJsonHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString, bytes.NewBuffer(tt.want.parametersJson))
+			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString, bytes.NewBuffer(tt.want.parametersJSON))
 
 			tt.want.mock(mockStorage)
 
 			w := httptest.NewRecorder()
 
-			SetMetricByJsonHandler(t.Context(), w, request, mockStorage)
+			SetMetricByJSONHandler(t.Context(), w, request, mockStorage)
 			res := w.Result()
 			if res.Body != nil {
 				if err := res.Body.Close(); err != nil {
@@ -699,7 +699,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 		requestMethod    string
 		requestString    string
 		parametersString map[string]string
-		parametersJson   []byte
+		parametersJSON   []byte
 		containsValue    string
 		contentType      string
 		msgString        string
@@ -715,7 +715,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"PollCount", "type":"counter"}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"counter"}`),
 				containsValue:  "PollCount",
 				contentType:    "application/json",
 				msgString:      "POST value",
@@ -742,7 +742,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusOK,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"RandomValue", "type":"gauge"}`),
+				parametersJSON: []byte(`{"id":"RandomValue", "type":"gauge"}`),
 				containsValue:  "RandomValue",
 				contentType:    "application/json",
 				msgString:      "POST value",
@@ -769,7 +769,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusNotFound,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"PollCount"}`),
+				parametersJSON: []byte(`{"id":"PollCount"}`),
 				containsValue:  "",
 				msgString:      "POST value",
 				mock:           func(m *mocks.MockStorage) {},
@@ -781,7 +781,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusNotFound,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"PollCount", "type":"count"}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"count"}`),
 				containsValue:  "",
 				msgString:      "POST value",
 				mock: func(m *mocks.MockStorage) {
@@ -801,7 +801,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusNotFound,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"PollCount", "type":"gauge"}`),
+				parametersJSON: []byte(`{"id":"PollCount", "type":"gauge"}`),
 				containsValue:  "",
 				msgString:      "POST value",
 				mock: func(m *mocks.MockStorage) {
@@ -821,7 +821,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusNotFound,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"type":"counter"}`),
+				parametersJSON: []byte(`{"type":"counter"}`),
 				containsValue:  "",
 				msgString:      "POST value",
 				mock:           func(m *mocks.MockStorage) {},
@@ -833,7 +833,7 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 				code:           http.StatusNotFound,
 				requestMethod:  http.MethodPost,
 				requestString:  "value",
-				parametersJson: []byte(`{"id":"PollCounter", "type":"counter"}`),
+				parametersJSON: []byte(`{"id":"PollCounter", "type":"counter"}`),
 				containsValue:  "",
 				msgString:      "POST value",
 				mock: func(m *mocks.MockStorage) {
@@ -860,13 +860,13 @@ func TestGetMetricValueByJsonHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString, bytes.NewBuffer(tt.want.parametersJson))
+			request := httptest.NewRequest(tt.want.requestMethod, "/"+tt.want.requestString, bytes.NewBuffer(tt.want.parametersJSON))
 
 			tt.want.mock(mockStorage)
 
 			w := httptest.NewRecorder()
 
-			GetMetricValueByJsonHandler(t.Context(), w, request, mockStorage)
+			GetMetricValueByJSONHandler(t.Context(), w, request, mockStorage)
 			res := w.Result()
 
 			assert.Equal(t, tt.want.code, res.StatusCode, tt.want.msgString)

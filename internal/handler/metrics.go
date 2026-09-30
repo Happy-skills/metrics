@@ -40,7 +40,6 @@ func SetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
@@ -73,7 +72,6 @@ func GetMetricHandler(ctx context.Context, w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
 }
 
@@ -104,7 +102,6 @@ func GetMetricValueHandler(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(mValue))
 }
 
@@ -154,7 +151,7 @@ func GetMetricsHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+func SetMetricByJSONHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var metric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)
@@ -189,7 +186,6 @@ func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
 func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
@@ -229,10 +225,9 @@ func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, sto
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
 }
 
-func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+func GetMetricValueByJSONHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var reqMetric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)
@@ -271,7 +266,6 @@ func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(js)
 }
 

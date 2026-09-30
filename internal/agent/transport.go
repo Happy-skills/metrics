@@ -3,19 +3,21 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"slices"
 
 	"github.com/Happy-skills/metrics/internal/compress"
+	"github.com/Happy-skills/metrics/internal/hashing"
 	"github.com/Happy-skills/metrics/internal/logger"
 	"github.com/Happy-skills/metrics/internal/retrier"
 	"gopkg.in/h2non/gentleman.v2"
 )
 
-func sendDataWithRetry(url, headerValue string, body []byte) error {
+func sendDataWithRetry(url, headerValue string, key string, body []byte) error {
 	return retrier.Retrier(func() (isRetriable bool, err error) {
-		err = sendData(url, headerValue, body)
+		err = sendData(url, headerValue, key, body)
 		if err == nil {
 			return false, nil
 		}
@@ -25,12 +27,24 @@ func sendDataWithRetry(url, headerValue string, body []byte) error {
 	})
 }
 
-func sendData(url string, headerValue string, body []byte) error {
+func sendData(url string, headerValue string, key string, body []byte) error {
 	client := gentleman.New()
 	req := client.Request()
 	req.Method(http.MethodPost)
 	req.URL(url)
 	req.SetHeader("Content-Type", headerValue)
+
+	if key != "" {
+		h, err := hashing.GetHashedBody(key, body)
+		if err != nil {
+			logger.Sugar.Errorf("Agent error getting hash body: %s", err.Error())
+			return err
+		}
+		logger.Sugar.Infof("Agent get url: %s", url)
+		logger.Sugar.Infof("Agent get hash body: %s", base64.StdEncoding.EncodeToString(h))
+		logger.Sugar.Infof("Agent get body: %s", string(body))
+		req.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(h))
+	}
 
 	contentType := slices.Contains(compress.TypesForGzip, headerValue)
 	if contentType {
@@ -66,7 +80,7 @@ func sendData(url string, headerValue string, body []byte) error {
 	}(response)
 
 	if !response.Ok {
-		return fmt.Errorf("agent error Send: %d %s", response.StatusCode, response.String())
+		return fmt.Errorf("agent error Send: %d", response.StatusCode)
 	}
 
 	return nil

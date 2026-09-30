@@ -50,7 +50,7 @@ func Fields(r runtime.MemStats) map[string]any {
 
 func Run(ctx context.Context, options config.AgentOptions, memStore repository.Storage) {
 	go poolGetting(ctx, options.PollInterval, memStore)
-	poolSending(ctx, options.ReportInterval, options.ServerAddr, memStore)
+	poolSending(ctx, options.ReportInterval, options.ServerAddr, options.Key, memStore)
 }
 
 func poolGetting(ctx context.Context, pollInterval int, memStore repository.Storage) {
@@ -69,7 +69,7 @@ func poolGetting(ctx context.Context, pollInterval int, memStore repository.Stor
 	}
 }
 
-func poolSending(ctx context.Context, pollInterval int, flagServerAddr string, memStore repository.Storage) {
+func poolSending(ctx context.Context, pollInterval int, flagServerAddr string, key string, memStore repository.Storage) {
 	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
 	defer ticker.Stop()
 
@@ -78,7 +78,7 @@ func poolSending(ctx context.Context, pollInterval int, flagServerAddr string, m
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := sendMetricsByJsonWithCompress("http://"+flagServerAddr, memStore); err != nil {
+			if err := sendMetricsByJSONWithCompress("http://"+flagServerAddr, key, memStore); err != nil {
 				logger.Sugar.Errorf("sendMetrics error: %s", err.Error())
 			}
 		}
@@ -103,8 +103,8 @@ func getMetrics(ctx context.Context, memStore repository.Storage) error {
 	return nil
 }
 
-func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage) error {
-	values := slices.Collect(maps.Values(memStore.GetValues(nil)))
+func sendMetricsByJSONWithCompress(serverURL string, key string, memStore repository.Storage) error {
+	values := slices.Collect(maps.Values(memStore.GetValues(context.TODO())))
 	if len(values) == 0 {
 		return nil
 	}
@@ -116,8 +116,9 @@ func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage
 	}
 
 	err = sendDataWithRetry(
-		fmt.Sprintf("%s/updates/", serverUrl),
+		fmt.Sprintf("%s/updates/", serverURL),
 		"application/json",
+		key,
 		jsonValues,
 	)
 	if err != nil {
@@ -126,7 +127,7 @@ func sendMetricsByJsonWithCompress(serverUrl string, memStore repository.Storage
 	}
 
 	// reset counters after send
-	for _, v := range memStore.GetValues(nil) {
+	for _, v := range memStore.GetValues(context.TODO()) {
 		if v.ID == "PollCount" {
 			if err := memStore.ResetValue(context.TODO(), models.Counter, "PollCount"); err != nil {
 				logger.Sugar.Errorf("ResetValue error: %s", err.Error())

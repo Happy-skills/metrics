@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -39,7 +41,7 @@ func Test_getMetrics(t *testing.T) {
 				t.Fatalf("getMetrics failed: %s", err.Error())
 			}
 			for i := 0; i < len(tt.want.metrics); i++ {
-				v, _ := mStore.GetValue(nil, tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
+				v, _ := mStore.GetValue(context.TODO(), tt.want.metrics[i].typeMetric, tt.want.metrics[i].nameMetric)
 				if tt.want.metrics[i].typeMetric == models.Counter {
 					if *v.Delta <= 0 {
 						t.Fatalf("delta is zero for %s", tt.want.metrics[i].nameMetric)
@@ -60,14 +62,19 @@ func Test_getMetrics(t *testing.T) {
 func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 	tests := []struct {
 		name    string
+		key     string
 		wantErr bool
 	}{
 		{
 			name:    "positive test",
+			key:     "keyTest",
 			wantErr: false,
 		},
 	}
 	mStore := repository.NewMemStorage("")
+	if err := logger.Initialize("info"); err != nil {
+		log.Fatal(err.Error())
+	}
 	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
@@ -75,7 +82,7 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 	defer ts.Close()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendMetricsByJsonWithCompress(ts.URL, mStore); (err != nil) != tt.wantErr {
+			if err := sendMetricsByJSONWithCompress(ts.URL, tt.key, mStore); (err != nil) != tt.wantErr {
 				t.Errorf("sendMetricsByJsonWithCompress() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -86,6 +93,7 @@ func Test_sendMetricsByJsonWithCompress_fail(t *testing.T) {
 	logger.Initialize("ERROR")
 
 	mStore := repository.NewMemStorage("")
+	key := "keyTest"
 
 	if err := getMetrics(t.Context(), mStore); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
@@ -95,5 +103,5 @@ func Test_sendMetricsByJsonWithCompress_fail(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	assert.Error(t, sendMetricsByJsonWithCompress(ts.URL, mStore))
+	assert.Error(t, sendMetricsByJSONWithCompress(ts.URL, key, mStore))
 }
