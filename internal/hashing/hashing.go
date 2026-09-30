@@ -20,10 +20,6 @@ func GetHashedBody(key string, body []byte) ([]byte, error) {
 }
 
 func CheckHashedBody(key string, hashedData string, body []byte) (bool, error) {
-	logger.Sugar.Infof("key %s", key)
-	logger.Sugar.Infof("hashedData %s", hashedData)
-	logger.Sugar.Infof("body %s", string(body))
-
 	dataRequest, err := GetHashedBody(key, body)
 	if err != nil {
 		return false, fmt.Errorf("error get hash body: %w", err)
@@ -43,60 +39,57 @@ func CheckHashedBody(key string, hashedData string, body []byte) (bool, error) {
 }
 
 func HashHandler(key string, h http.HandlerFunc) http.HandlerFunc {
-	logger.Sugar.Infof("HashHandler key: %s", key)
-
-	if key == "" {
-		return h
-	} else {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			logger.Sugar.Infof("HashHandler contentHash: %s", r.URL.Path)
-			contentHash := r.Header.Get("HashSHA256")
-			logger.Sugar.Infof("HashHandler contentHash: %s", contentHash)
-			if contentHash != "" {
-				body, err := io.ReadAll(r.Body)
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-
-				signValide, err := CheckHashedBody(key, contentHash, body)
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				if !signValide {
-					logger.Sugar.Infof("hashing failed for key: %s", key)
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-
-				r.Body = io.NopCloser(bytes.NewBuffer(body))
-			}
-
-			hashResponseWriter := &HashResponseWriter{
-				w: w,
-				b: &bytes.Buffer{},
-			}
-
-			h.ServeHTTP(hashResponseWriter, r)
-
-			w = hashResponseWriter.w
-
-			b, err := GetHashedBody(key, hashResponseWriter.b.Bytes())
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Set("HashSHA256", base64.StdEncoding.EncodeToString(b))
-
-			_, err = w.Write(hashResponseWriter.b.Bytes())
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if key == "" {
+			h.ServeHTTP(w, r)
+			return
 		}
 
-		return fn
+		contentHash := r.Header.Get("HashSHA256")
+		if contentHash != "" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			signValide, err := CheckHashedBody(key, contentHash, body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if !signValide {
+				logger.Sugar.Infof("hashing failed for key: %s", key)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			r.Body = io.NopCloser(bytes.NewBuffer(body))
+		}
+
+		hashResponseWriter := &HashResponseWriter{
+			w: w,
+			b: &bytes.Buffer{},
+		}
+
+		h.ServeHTTP(hashResponseWriter, r)
+
+		w = hashResponseWriter.w
+
+		b, err := GetHashedBody(key, hashResponseWriter.b.Bytes())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("HashSHA256", base64.StdEncoding.EncodeToString(b))
+
+		_, err = w.Write(hashResponseWriter.b.Bytes())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
+
+	return fn
 }
