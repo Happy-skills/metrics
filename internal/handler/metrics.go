@@ -151,7 +151,7 @@ func GetMetricsHandler(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func SetMetricByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+func SetMetricByJSONHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var metric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)
@@ -227,7 +227,7 @@ func SetMetrics(ctx context.Context, w http.ResponseWriter, r *http.Request, sto
 	w.Header().Set("Content-Type", "text/plain")
 }
 
-func GetMetricValueByJsonHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
+func GetMetricValueByJSONHandler(ctx context.Context, w http.ResponseWriter, r *http.Request, store repository.Storage) {
 	var reqMetric models.Metrics
 
 	jsonBody, err := io.ReadAll(r.Body)

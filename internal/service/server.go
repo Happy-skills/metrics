@@ -26,7 +26,7 @@ func RunServer(options config.ServerOptions, store repository.Storage) error {
 			handler.SetMetricHandler(r.Context(), w, r, store)
 		}))
 		r.Post("/", logger.LoggingHandler(compress.GzipHandler(hashing.HashHandler(options.Key, func(w http.ResponseWriter, r *http.Request) {
-			handler.SetMetricByJsonHandler(r.Context(), w, r, store)
+			handler.SetMetricByJSONHandler(r.Context(), w, r, store)
 		}))))
 	})
 	r.Post("/updates/", logger.LoggingHandler(compress.GzipHandler(hashing.HashHandler(options.Key, func(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +38,7 @@ func RunServer(options config.ServerOptions, store repository.Storage) error {
 			handler.GetMetricValueHandler(r.Context(), w, r, store)
 		})))
 		r.Post("/", logger.LoggingHandler(compress.GzipHandler(hashing.HashHandler(options.Key, func(w http.ResponseWriter, r *http.Request) {
-			handler.GetMetricValueByJsonHandler(r.Context(), w, r, store)
+			handler.GetMetricValueByJSONHandler(r.Context(), w, r, store)
 		}))))
 	})
 
@@ -61,12 +61,9 @@ func WriteMetrics(cfg config.ServerOptions, store repository.Storage) {
 	ticker := time.NewTicker(time.Duration(cfg.StoreInterval) * time.Second)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			if err := repository.WriteMetricsInFile(cfg.FileStoragePath, store); err != nil {
-				logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
-			}
+	for range ticker.C {
+		if err := repository.WriteMetricsInFile(cfg.FileStoragePath, store); err != nil {
+			logger.Sugar.Errorf("Error writting metrics in file: %s", err.Error())
 		}
 	}
 }
