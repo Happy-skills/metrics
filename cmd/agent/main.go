@@ -15,7 +15,8 @@ func main() {
 	options := config.ParseAgentFlags()
 	memStore := repository.NewMemStorage("")
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if err := logger.Initialize("info"); err != nil {
 		log.Fatal(err.Error())

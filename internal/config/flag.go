@@ -14,6 +14,7 @@ type AgentOptions struct {
 	PollInterval   int    `env:"POLL_INTERVAL"`
 	SendRetries    int    `env:"SEND_RETRIES"`
 	Key            string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 type ServerOptions struct {
@@ -33,6 +34,7 @@ func ParseAgentFlags() AgentOptions {
 		PollInterval:   2,
 		SendRetries:    3,
 		Key:            "",
+		RateLimit:      5,
 	}
 
 	if err := env.Parse(&options); err != nil {
@@ -52,6 +54,7 @@ func setAgentFlag(opt *AgentOptions) {
 	flag.IntVar(&opt.ReportInterval, "r", opt.ReportInterval, "interval in seconds for sending metrics")
 	flag.IntVar(&opt.SendRetries, "send-retries", opt.SendRetries, "how many times to retry sending metrics")
 	flag.StringVar(&opt.Key, "k", opt.Key, "secret key")
+	flag.IntVar(&opt.RateLimit, "l", opt.RateLimit, "how many requests can send agent")
 
 	flag.Parse()
 }
