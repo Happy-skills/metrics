@@ -48,7 +48,7 @@ func Initialize(level string) error {
 func LoggingHandler(h http.HandlerFunc) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		reqUri := r.RequestURI
+		reqURI := r.RequestURI
 		reqMethod := r.Method
 
 		responseData := &responseData{
@@ -65,7 +65,7 @@ func LoggingHandler(h http.HandlerFunc) http.HandlerFunc {
 		reqDuration := time.Since(start)
 
 		Sugar.Infoln(
-			"reqURI:", reqUri,
+			"reqURI:", reqURI,
 			"reqMethod:", reqMethod,
 			"reqDuration:", reqDuration,
 			"respStatusCode:", responseData.status,
