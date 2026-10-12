@@ -34,10 +34,13 @@ func Test_getMetrics(t *testing.T) {
 				{typeMetric: models.Gauge, nameMetric: "HeapAlloc", typeValue: reflect.Float64}}},
 		},
 	}
+	dataCh := make(chan models.Metrics, 1)
+	defer close(dataCh)
+
 	mStore := repository.NewMemStorage("")
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := getMetrics(t.Context(), mStore); err != nil {
+			if err := getMetrics(t.Context(), mStore, dataCh); err != nil {
 				t.Fatalf("getMetrics failed: %s", err.Error())
 			}
 			for i := 0; i < len(tt.want.metrics); i++ {
@@ -71,11 +74,14 @@ func Test_sendMetricsByJsonWithCompress(t *testing.T) {
 			wantErr: false,
 		},
 	}
+	dataCh := make(chan models.Metrics, 1)
+	defer close(dataCh)
+
 	mStore := repository.NewMemStorage("")
 	if err := logger.Initialize("info"); err != nil {
 		log.Fatal(err.Error())
 	}
-	if err := getMetrics(t.Context(), mStore); err != nil {
+	if err := getMetrics(t.Context(), mStore, dataCh); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
@@ -95,7 +101,10 @@ func Test_sendMetricsByJsonWithCompress_fail(t *testing.T) {
 	mStore := repository.NewMemStorage("")
 	key := "keyTest"
 
-	if err := getMetrics(t.Context(), mStore); err != nil {
+	dataCh := make(chan models.Metrics, 1)
+	defer close(dataCh)
+
+	if err := getMetrics(t.Context(), mStore, dataCh); err != nil {
 		t.Fatalf("getMetrics failed: %s", err.Error())
 	}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
